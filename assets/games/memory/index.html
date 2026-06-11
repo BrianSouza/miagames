@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Jogo da Memória</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+
+    <header id="header">
+      <button id="btn-back"  class="icon-btn" aria-label="Voltar">&#8592;</button>
+      <div id="stats">
+        <span id="matches">0/0</span>
+        <span id="timer">00:00</span>
+        <span id="moves">0 jogadas</span>
+      </div>
+      <button id="btn-reset" class="icon-btn" aria-label="Reiniciar">&#8635;</button>
+    </header>
+
+    <main id="board-container">
+      <div id="board"></div>
+    </main>
+
+    <div id="result-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content">
+        <div id="stars" class="stars"></div>
+        <h2>Parabéns! 🎉</h2>
+        <p id="result-stats"></p>
+        <button id="btn-play-again" class="btn-primary">Jogar Novamente</button>
+        <button id="btn-home"       class="btn-secondary">Início</button>
+      </div>
+    </div>
+
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>
