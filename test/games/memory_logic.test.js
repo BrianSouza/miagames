@@ -3,7 +3,11 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 
+const fs = require('node:fs');
+const path = require('node:path');
+
 const Logic = require('../../assets/games/memory/memory-logic.js');
+const GAME_DIR = path.join(__dirname, '../../assets/games/memory');
 
 /** Duas cartas do mesmo par, sem depender da ordem aleatória */
 function findPair(state) {
@@ -34,11 +38,19 @@ describe('createGame', () => {
       for (let pairId = 0; pairId < pairs; pairId++) {
         const pair = state.cards.filter(c => c.pairId === pairId);
         assert.equal(pair.length, 2);
-        assert.equal(pair[0].emoji, pair[1].emoji);
+        assert.equal(pair[0].image, pair[1].image);
         assert.ok(pair[0].name, 'cada carta tem o nome falado do animal');
       }
     });
   }
+
+  test('cada animal tem uma ilustração que existe em assets/', () => {
+    for (const animal of Logic.ANIMALS) {
+      const file = path.join(GAME_DIR, Logic.imageFor(animal.id));
+      assert.ok(fs.existsSync(file), `falta ${file}`);
+      assert.match(fs.readFileSync(file, 'utf8'), /^<svg /);
+    }
+  });
 
   test('dificuldade desconhecida cai no fácil', () => {
     assert.equal(Logic.createGame('impossivel').totalPairs, 6);
@@ -157,6 +169,22 @@ describe('calcStars', () => {
     assert.equal(Logic.calcStars({ ...base, moves: 10 }), 2);
     assert.equal(Logic.calcStars({ ...base, moves: 30 }), 1);
     assert.equal(Logic.calcStars({ ...base, moves: 0 }), 3);
+  });
+});
+
+describe('isNewRecord', () => {
+  test('primeira partida (sem recorde) não é novo recorde', () => {
+    assert.equal(Logic.isNewRecord(null, 3, 6), false);
+  });
+
+  test('mais estrelas vencem, mesmo com mais jogadas', () => {
+    assert.equal(Logic.isNewRecord({ stars: 2, moves: 8 }, 3, 9), true);
+    assert.equal(Logic.isNewRecord({ stars: 3, moves: 6 }, 2, 6), false);
+  });
+
+  test('com as mesmas estrelas, só menos jogadas é recorde', () => {
+    assert.equal(Logic.isNewRecord({ stars: 2, moves: 10 }, 2, 9), true);
+    assert.equal(Logic.isNewRecord({ stars: 2, moves: 10 }, 2, 10), false);
   });
 });
 

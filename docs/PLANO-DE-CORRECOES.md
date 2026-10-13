@@ -53,10 +53,12 @@ Legenda: ✅ feito · ⏭️ fica para depois
 | 4.3 | Botões do jogo com 44px, abaixo dos 56px usados no resto do app | 56px | ✅ |
 | 4.4 | Tabuleiro limitado a 420px de largura (pequeno em tablets) e calculado só pela largura | Tamanho calculado pela largura **e** pela altura disponíveis | ✅ |
 | 4.5 | Um toque no "voltar" do jogo ou no voltar do sistema encerrava a partida sem querer | No jogo, é preciso **segurar** o botão voltar. No sistema, é preciso tocar voltar duas vezes. Um toque só mostra a dica | ✅ |
-| 4.6 | Ícones e ilustrações próprios em vez de emoji | Precisa de assets de design | ⏭️ |
-| 4.7 | Sons de efeito (virar, acerto) além da voz | Precisa de arquivos de áudio | ⏭️ |
-| 4.8 | Salvar o progresso e as estrelas (`GAME_COMPLETE` já chega ao Flutter) | Persistência local, como `shared_preferences` | ⏭️ |
-| 4.9 | Bloqueio de controle parental para configurações e compras | Só faz sentido quando existirem essas telas | ⏭️ |
+| 4.6 | Emoji no lugar de ilustrações: a aparência mudava de um aparelho para outro | 10 animais desenhados em SVG num estilo único, mais o ícone do jogo e as estrelas do resultado. Tudo é gerado por `tool/generate_illustrations.py`, então dá para ajustar e regenerar | ✅ |
+| 4.7 | Nenhum efeito sonoro além da voz | Sons de virar, acertar, errar e vencer, **sintetizados** com a Web Audio API (`sounds.js`), sem arquivos de áudio. Volume baixo, para não cobrir a voz | ✅ |
+| 4.8 | O progresso se perdia ao fechar o app | Recordes por jogo e dificuldade (estrelas, jogadas, tempo, partidas) salvos com `shared_preferences`. O seletor de dificuldade mostra o recorde, e o jogo exibe "Novo recorde!" quando ele é batido | ✅ |
+| 4.9 | Sem bloqueio parental | A **Área dos pais** (voz, sons, progresso, apagar progresso) só abre depois de uma conta de somar com resultado de 10 a 18, que crianças de 3 a 6 anos não resolvem | ✅ |
+| 4.10 | Compras no app | Ainda não existem. Quando existirem, devem passar pelo mesmo bloqueio | ⏭️ |
+| 4.11 | Ícone do app (launcher) próprio | Usar `flutter_launcher_icons` com uma arte final | ⏭️ |
 
 ---
 

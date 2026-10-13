@@ -2,23 +2,26 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../core/audio/narrator.dart';
-import '../core/bridge/game_message.dart';
+import '../core/bridge/game_session.dart';
+import '../core/storage/progress_store.dart';
 import '../core/theme/app_colors.dart';
 import '../core/widgets/exit_guard.dart';
 import '../modules/game_module.dart';
 
 /// Carrega um mini-jogo (HTML/JS em assets/) numa WebView e faz a ponte
-/// entre ele e o Flutter: configuração inicial, voz e navegação.
+/// entre ele e o Flutter: configuração inicial, voz, navegação e progresso.
 class GameScreen extends StatefulWidget {
   final GameModule game;
   final GameDifficulty difficulty;
   final Narrator narrator;
+  final ProgressStore store;
 
   const GameScreen({
     super.key,
     required this.game,
     required this.difficulty,
     required this.narrator,
+    required this.store,
   });
 
   @override
@@ -27,11 +30,22 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   late final WebViewController _controller;
+  late final GameSession _session;
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _session = GameSession(
+      game: widget.game,
+      difficulty: widget.difficulty,
+      narrator: widget.narrator,
+      store: widget.store,
+      // Navigator.pop não passa pelo ExitGuard: o jogo já exigiu segurar o botão
+      onNavigateBack: () {
+        if (mounted) Navigator.pop(context);
+      },
+    );
     _buildController();
   }
 
@@ -60,33 +74,14 @@ class _GameScreenState extends State<GameScreen> {
       )
       ..addJavaScriptChannel(
         'MiaGamesFlutter',
-        onMessageReceived: (message) => _onGameMessage(message.message),
+        onMessageReceived: (message) => _session.handle(message.message),
       )
       ..loadFlutterAsset(widget.game.assetPath);
   }
 
   void _sendInitConfig() {
-    final config = jsonEncode({
-      'type': 'INIT',
-      'difficulty': widget.difficulty.name,
-      'gameId': widget.game.id,
-    });
+    final config = jsonEncode(_session.initMessage());
     _controller.runJavaScript('window.handleFlutterMessage($config)');
-  }
-
-  void _onGameMessage(String raw) {
-    switch (GameMessage.parse(raw)) {
-      case NavigateBack():
-        // Navigator.pop não passa pelo ExitGuard: o jogo já exigiu segurar o botão
-        if (mounted) Navigator.pop(context);
-      case Speak(:final text):
-        widget.narrator.speak(text);
-      case GameComplete():
-        // Futuro: salvar estrelas e progresso, analytics
-        break;
-      case null:
-        break;
-    }
   }
 
   @override

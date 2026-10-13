@@ -23,19 +23,24 @@
     hard:   { pairs: 10, cols: 4 },
   };
 
-  // 10 animais (suficiente para o nível mais difícil), com o nome falado
+  // 10 animais (suficiente para o nível mais difícil), com o nome falado.
+  // Ilustrações próprias em img/<id>.svg (geradas por tool/generate_illustrations.py)
   var ANIMALS = [
-    { emoji: '🐶', name: 'Cachorro' },
-    { emoji: '🐱', name: 'Gato' },
-    { emoji: '🐭', name: 'Rato' },
-    { emoji: '🐰', name: 'Coelho' },
-    { emoji: '🦊', name: 'Raposa' },
-    { emoji: '🐻', name: 'Urso' },
-    { emoji: '🐼', name: 'Panda' },
-    { emoji: '🐨', name: 'Coala' },
-    { emoji: '🐯', name: 'Tigre' },
-    { emoji: '🦁', name: 'Leão' },
+    { id: 'cachorro', name: 'Cachorro' },
+    { id: 'gato',     name: 'Gato' },
+    { id: 'rato',     name: 'Rato' },
+    { id: 'coelho',   name: 'Coelho' },
+    { id: 'raposa',   name: 'Raposa' },
+    { id: 'urso',     name: 'Urso' },
+    { id: 'panda',    name: 'Panda' },
+    { id: 'coala',    name: 'Coala' },
+    { id: 'tigre',    name: 'Tigre' },
+    { id: 'leao',     name: 'Leão' },
   ];
+
+  function imageFor(animalId) {
+    return 'img/' + animalId + '.svg';
+  }
 
   /** Tempo (ms) que as duas cartas ficam visíveis antes da verificação */
   var CHECK_DELAY_MS = 800;
@@ -67,8 +72,9 @@
 
     var cards = [];
     animals.forEach(function (animal, pairId) {
-      cards.push({ id: pairId * 2,     emoji: animal.emoji, name: animal.name, pairId: pairId, state: 'hidden' });
-      cards.push({ id: pairId * 2 + 1, emoji: animal.emoji, name: animal.name, pairId: pairId, state: 'hidden' });
+      var image = imageFor(animal.id);
+      cards.push({ id: pairId * 2,     image: image, name: animal.name, pairId: pairId, state: 'hidden' });
+      cards.push({ id: pairId * 2 + 1, image: image, name: animal.name, pairId: pairId, state: 'hidden' });
     });
 
     return {
@@ -163,6 +169,17 @@
     return 1;
   }
 
+  /**
+   * A partida terminada bate o recorde salvo? Mais estrelas vencem; com as
+   * mesmas estrelas, menos jogadas. Sem recorde salvo, não é "novo recorde"
+   * (a primeira partida não deve parecer uma conquista especial).
+   */
+  function isNewRecord(best, stars, moves) {
+    if (!best) return false;
+    if (stars !== best.stars) return stars > best.stars;
+    return moves < best.moves;
+  }
+
   /** Milissegundos desde o primeiro toque (0 antes de começar) */
   function elapsedMs(state, now) {
     if (state.startedAt === null) return 0;
@@ -183,6 +200,7 @@
   return {
     DIFFICULTY: DIFFICULTY,
     ANIMALS: ANIMALS,
+    imageFor: imageFor,
     CHECK_DELAY_MS: CHECK_DELAY_MS,
     configFor: configFor,
     shuffle: shuffle,
@@ -190,6 +208,7 @@
     flip: flip,
     resolve: resolve,
     calcStars: calcStars,
+    isNewRecord: isNewRecord,
     elapsedMs: elapsedMs,
     cardSize: cardSize,
   };

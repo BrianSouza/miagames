@@ -5,7 +5,7 @@ final List<GameModule> gameRegistry = [
   const GameModule(
     id: 'memory',
     displayName: 'Jogo da Memória',
-    icon: '🧠',
+    iconAsset: 'assets/images/memory_game.svg',
     accentColor: Color(0xFF4ECDC4),
     ageRange: [3, 6],
     skills: ['Memória', 'Atenção', 'Concentração'],

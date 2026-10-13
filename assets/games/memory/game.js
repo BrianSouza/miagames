@@ -4,6 +4,7 @@
   // Camada de apresentação do Jogo da Memória: DOM, timers e ponte com o Flutter.
   // As regras ficam em memory-logic.js (testado com `node --test`).
   var Logic = window.MemoryLogic;
+  var Sounds = window.GameSounds;
 
   var BOARD_GAP = 10;
   var EXIT_HOLD_MS = 700;   // segurar o voltar por este tempo para sair
@@ -14,6 +15,7 @@
   var checkTimer = null;    // verificação agendada das duas cartas abertas
   var clockTimer = null;    // atualiza o cronômetro na tela
   var hintTimer = null;
+  var best = null;          // recorde salvo pelo Flutter: { stars, moves } ou null
 
   // ── DOM refs ──────────────────────────────────────────────────────────────────
   var boardContainerEl = document.getElementById('board-container');
@@ -24,16 +26,20 @@
   var hintEl           = document.getElementById('exit-hint');
   var resultModal      = document.getElementById('result-modal');
   var starsEl          = document.getElementById('stars');
+  var recordEl         = document.getElementById('new-record');
   var resultStatsEl    = document.getElementById('result-stats');
   var backBtn          = document.getElementById('btn-back');
 
   // ── Ponte com o Flutter ───────────────────────────────────────────────────────
   /**
    * Chamado pelo Flutter quando a página termina de carregar:
-   *   window.handleFlutterMessage({"type":"INIT","difficulty":"easy","gameId":"memory"})
+   *   window.handleFlutterMessage({"type":"INIT","difficulty":"easy","gameId":"memory",
+   *                                "sound":true,"best":{"stars":2,"moves":9}})
    */
   window.handleFlutterMessage = function (data) {
     if (data && data.type === 'INIT') {
+      Sounds.setEnabled(data.sound !== false);
+      best = data.best || null;
       startGame(data.difficulty);
     }
   };
@@ -93,7 +99,9 @@
       el.innerHTML =
         '<div class="card-inner">' +
           '<div class="card-front" aria-hidden="true">?</div>' +
-          '<div class="card-back" aria-hidden="true">' + card.emoji + '</div>' +
+          '<div class="card-back" aria-hidden="true">' +
+            '<img src="' + card.image + '" alt="" draggable="false">' +
+          '</div>' +
         '</div>';
       el.addEventListener('click', function () { onCardClick(card.id); });
       boardEl.appendChild(el);
@@ -139,6 +147,7 @@
     var startedNow = state.startedAt === null;
     state = next;
     refreshCard(id);
+    Sounds.play('flip');
     speak(findCard(id).name);
 
     if (startedNow) {
@@ -162,7 +171,11 @@
     pending.forEach(refreshCard);
     updateStats();
 
-    if (outcome.result === 'match') speak('Muito bem!');
+    if (outcome.result === 'mismatch') Sounds.play('mismatch');
+    if (outcome.result === 'match') {
+      Sounds.play('match');
+      speak('Muito bem!');
+    }
     if (outcome.result === 'complete') endGame();
   }
 
@@ -171,12 +184,21 @@
 
     var elapsed = Logic.elapsedMs(state, Date.now());
     var stars = Logic.calcStars(state);
+    var newRecord = Logic.isNewRecord(best, stars, state.moves);
 
     timerEl.textContent = fmtTime(elapsed);
-    starsEl.textContent = '⭐'.repeat(stars);
+    renderStars(stars);
+    starsEl.setAttribute('aria-label', stars + (stars === 1 ? ' estrela' : ' estrelas'));
+    recordEl.classList.toggle('hidden', !newRecord);
     resultStatsEl.textContent = state.moves + ' jogadas · ' + fmtTime(elapsed);
     resultModal.classList.remove('hidden');
-    speak('Parabéns! Você encontrou todos os pares!');
+    Sounds.play('win');
+    speak(newRecord
+      ? 'Parabéns! Novo recorde!'
+      : 'Parabéns! Você encontrou todos os pares!');
+
+    // O Flutter salva o recorde; aqui só atualizamos para o "Jogar novamente"
+    if (!best || newRecord) best = { stars: stars, moves: state.moves };
 
     sendToFlutter('GAME_COMPLETE', {
       gameId:      'memory',
@@ -186,6 +208,15 @@
       timeSeconds: Math.floor(elapsed / 1000),
       stars:       stars,
     });
+  }
+
+  /** 3 estrelas desenhadas: as conquistadas em amarelo, as demais em cinza */
+  function renderStars(count) {
+    var path = 'M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 20.9l1.6-7L2 9.2l7.1-.6z';
+    starsEl.innerHTML = [0, 1, 2].map(function (i) {
+      return '<svg viewBox="0 0 24 24" aria-hidden="true" class="star' +
+        (i < count ? ' earned' : '') + '"><path d="' + path + '"/></svg>';
+    }).join('');
   }
 
   function tickClock() {

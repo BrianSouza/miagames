@@ -9,10 +9,11 @@ extension GameDifficultyLabel on GameDifficulty {
     GameDifficulty.hard => 'Difícil',
   };
 
-  String get stars => switch (this) {
-    GameDifficulty.easy => '⭐',
-    GameDifficulty.medium => '⭐⭐',
-    GameDifficulty.hard => '⭐⭐⭐',
+  /// Nível em barras (1 a 3). Estrelas ficam reservadas para o desempenho.
+  int get level => switch (this) {
+    GameDifficulty.easy => 1,
+    GameDifficulty.medium => 2,
+    GameDifficulty.hard => 3,
   };
 
   String get description => switch (this) {
@@ -25,7 +26,9 @@ extension GameDifficultyLabel on GameDifficulty {
 class GameModule {
   final String id;
   final String displayName;
-  final String icon;
+
+  /// Ilustração do jogo (SVG em assets/images/)
+  final String iconAsset;
   final Color accentColor;
   final List<int> ageRange;
   final List<String> skills;
@@ -37,7 +40,7 @@ class GameModule {
   const GameModule({
     required this.id,
     required this.displayName,
-    required this.icon,
+    required this.iconAsset,
     required this.accentColor,
     required this.ageRange,
     required this.skills,

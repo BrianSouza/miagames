@@ -15,7 +15,7 @@
         <span id="matches">0/0</span>
         <span id="timer">00:00</span>
         <span id="moves">0 jogadas</span>
-        <span id="exit-hint" class="hidden" role="status">✋ Segure ← para sair</span>
+        <span id="exit-hint" class="hidden" role="status">Segure ← para sair</span>
       </div>
       <button id="btn-reset" class="icon-btn" aria-label="Reiniciar">&#8635;</button>
     </header>
@@ -26,8 +26,9 @@
 
     <div id="result-modal" class="modal hidden" role="dialog" aria-modal="true">
       <div class="modal-content">
-        <div id="stars" class="stars"></div>
-        <h2>Parabéns! 🎉</h2>
+        <div id="stars" class="stars" role="img"></div>
+        <h2>Parabéns!</h2>
+        <p id="new-record" class="new-record hidden">Novo recorde!</p>
         <p id="result-stats"></p>
         <button id="btn-play-again" class="btn-primary">Jogar Novamente</button>
         <button id="btn-home"       class="btn-secondary">Início</button>
@@ -36,6 +37,7 @@
 
   </div>
   <script src="memory-logic.js"></script>
+  <script src="sounds.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

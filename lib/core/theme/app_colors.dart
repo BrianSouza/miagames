@@ -14,6 +14,8 @@ class AppColors {
 
   static const Color success = Color(0xFF2ED573);
   static const Color error = Color(0xFFFF4757);
+  // Ações destrutivas (texto): contraste ≥ 4.5:1 sobre branco
+  static const Color errorText = Color(0xFFC0392B);
   static const Color warning = Color(0xFFFFE66D);
 
   static const Color background = Color(0xFFFFF9F0);
