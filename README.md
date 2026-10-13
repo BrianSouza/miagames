@@ -1,121 +1,70 @@
 # 🎮 MiaGames
 
-App mobile de jogos educativos para crianças de 3 a 6 anos, construído com React Native + TypeScript.
+App mobile de jogos educativos para crianças de 3 a 6 anos, construído com **Flutter**.
+
+> Histórico de correções e próximos passos: [`docs/PLANO-DE-CORRECOES.md`](docs/PLANO-DE-CORRECOES.md).
 
 ---
 
-## 📁 Estrutura de Pastas
+## 🏛️ Arquitetura: shell Flutter + mini-jogos web
+
+O Flutter é o **shell** do app: Home, navegação, tema e voz. Cada jogo é um
+**mini-app HTML/CSS/JS** em `assets/games/<jogo>/`, carregado numa WebView.
+Os dois lados conversam por uma ponte JavaScript.
 
 ```
-MiaGames/
-├── src/
-│   ├── core/                        ← Infraestrutura transversal
-│   │   ├── navigation/
-│   │   │   ├── RootNavigator.tsx    ← Declaração de todas as rotas
-│   │   │   ├── types.ts             ← RootStackParamList (tipagem de rotas)
-│   │   │   └── index.ts
-│   │   ├── theme/
-│   │   │   ├── colors.ts            ← Paleta de cores vibrantes para crianças
-│   │   │   ├── spacing.ts           ← Espaçamento e border-radius
-│   │   │   ├── typography.ts        ← Fontes e tamanhos
-│   │   │   └── index.ts
-│   │   └── utils/
-│   │       ├── array.ts             ← shuffleArray (Fisher-Yates), chunkArray
-│   │       └── index.ts
-│   │
-│   ├── modules/                     ← Sistema de registro de jogos (plugin system)
-│   │   ├── types.ts                 ← Interface GameModule (contrato de um jogo)
-│   │   ├── gameRegistry.ts          ← Array com todos os jogos registrados
-│   │   └── index.ts
-│   │
-│   └── games/
-│       ├── shared/
-│       │   └── screens/
-│       │       └── HomeScreen.tsx   ← Tela inicial (consume gameRegistry)
-│       │
-│       └── memory/                  ← Módulo isolado do Jogo da Memória
-│           ├── index.ts             ← "Manifesto" do módulo (GameModule)
-│           ├── types/
-│           │   └── index.ts         ← MemoryCard, Difficulty, GameStats, etc.
-│           ├── hooks/
-│           │   └── useMemoryGame.ts ← Toda a lógica do jogo em um hook
-│           ├── components/
-│           │   ├── MemoryCard.tsx   ← Carta individual com animação de flip 3D
-│           │   ├── MemoryBoard.tsx  ← Grid responsivo de cartas
-│           │   ├── GameHeader.tsx   ← Barra com progresso e botões
-│           │   └── ResultModal.tsx  ← Modal de celebração ao completar
-│           └── screens/
-│               └── MemoryGameScreen.tsx ← Orquestra hook + componentes
-│
-├── App.tsx                          ← Providers globais + NavigationContainer
-└── index.js                        ← Ponto de entrada (AppRegistry)
+miagames/
+├── lib/
+│   ├── main.dart                  ← Ponto de entrada (cria o narrador real)
+│   ├── app.dart                   ← MaterialApp + tema
+│   ├── core/
+│   │   ├── audio/narrator.dart    ← Voz em pt-BR (flutter_tts), injetável nos testes
+│   │   ├── bridge/game_message.dart ← Mensagens jogo → Flutter (parse seguro)
+│   │   ├── theme/                 ← Cores, espaçamento, ThemeData
+│   │   └── widgets/exit_guard.dart  ← "Voltar" do sistema exige dois toques
+│   ├── modules/
+│   │   ├── game_module.dart       ← Contrato de um jogo + dificuldades
+│   │   └── game_registry.dart     ← Lista de jogos exibidos na Home
+│   └── screens/
+│       ├── home_screen.dart       ← Grid de jogos + seletor de dificuldade
+│       └── game_screen.dart       ← WebView + ponte com o jogo
+├── assets/games/memory/           ← Jogo da Memória (mini-app web)
+│   ├── index.html
+│   ├── style.css
+│   ├── memory-logic.js            ← Regras puras (testadas no Node)
+│   └── game.js                    ← DOM, timers e ponte
+├── test/
+│   ├── *_test.dart                ← Testes Flutter
+│   └── games/*.test.js            ← Testes da lógica dos jogos (node --test)
+├── android/  ios/                 ← Projetos nativos
+└── pubspec.yaml
 ```
 
----
+### Ponte Flutter ↔ jogo
 
-## 🏛️ Decisões Arquiteturais
+| Direção | Mensagem | Para quê |
+|---------|----------|----------|
+| Flutter → jogo | `window.handleFlutterMessage({type: 'INIT', difficulty, gameId})` | Inicia a partida na dificuldade escolhida |
+| jogo → Flutter | `SPEAK {text}` | Fala um texto. A voz do navegador não funciona na WebView do Android |
+| jogo → Flutter | `NAVIGATE_BACK` | Volta para a Home |
+| jogo → Flutter | `GAME_COMPLETE {moves, stars, timeSeconds, …}` | Fim da partida (base para salvar progresso) |
 
-### 1. Módulos de Jogo (Plugin System)
+O jogo envia com `MiaGamesFlutter.postMessage(JSON)`. O Flutter ignora
+mensagens malformadas, e a WebView só navega para os arquivos locais do jogo.
 
-Cada jogo é um módulo completamente isolado que segue a interface `GameModule`:
+### Adicionar um novo jogo
 
-```typescript
-interface GameModule {
-  id: string;
-  displayName: string;
-  icon: string;
-  accentColor: string;
-  route: keyof RootStackParamList;
-  metadata: { ageRange, skills, difficulty };
-}
-```
+1. Criar `assets/games/<jogo>/` com `index.html`, que implementa `window.handleFlutterMessage` e usa as mensagens acima
+2. Declarar a pasta em `flutter.assets` no `pubspec.yaml`
+3. Adicionar um `GameModule` em `lib/modules/game_registry.dart`
 
-Para **adicionar um novo jogo**, você só precisa:
-1. Criar `src/games/<nome>/` com a estrutura padrão
-2. Exportar um `GameModule` de `src/games/<nome>/index.ts`
-3. Importar e adicionar ao array em `src/modules/gameRegistry.ts`
-4. Adicionar a rota em `RootStackParamList` e `RootNavigator`
-
-A `HomeScreen` e o restante do app funcionam automaticamente.
-
-### 2. Separação de Responsabilidades
-
-| Camada | Arquivo | Responsabilidade |
-|--------|---------|------------------|
-| Lógica | `useMemoryGame.ts` | Estado, regras, timers |
-| Layout | `MemoryBoard.tsx` | Grid e tamanho de cartas |
-| Apresentação | `MemoryCard.tsx` | Animação e aparência da carta |
-| Orquestração | `MemoryGameScreen.tsx` | Conecta hook + componentes |
-| Configuração | `memory/index.ts` | Manifesto do módulo |
-
-### 3. State Management
-
-- **Local com hook**: O estado do jogo é local à tela (`useMemoryGame`). Não há necessidade de estado global para uma partida.
-- **Sem Redux/Zustand no MVP**: Adicionamos Zustand apenas quando o progresso precisar persistir entre sessões (ver roadmap).
-- **Imutabilidade**: Todo `setState` usa funções puras que retornam novos objetos/arrays.
-
-### 4. Performance
-
-- `useNativeDriver: true` em todas as animações → animações rodam na thread nativa
-- `backfaceVisibility: 'hidden'` → evita renderização da face invisível durante o flip
-- `Pressable` com `hitSlop` → área de toque maior sem aumentar o visual
-- `useCallback` no `flipCard` → evita re-criação desnecessária
+A Home, o seletor de dificuldade e a tela de jogo funcionam automaticamente.
 
 ---
 
 ## 🎮 Jogo da Memória
 
-### Fluxo de Estados
-
-```
-idle
- └── (flipCard) → playing
-                    └── (flipCard 2ª carta) → checking (800ms)
-                                                ├── (match)    → playing | completed
-                                                └── (no match) → playing
-```
-
-### Dificuldades
+Pares de animais, com o nome de cada um falado ao virar a carta.
 
 | Nível   | Pares | Colunas |
 |---------|-------|---------|
@@ -123,77 +72,45 @@ idle
 | Médio   | 8     | 4       |
 | Difícil | 10    | 4       |
 
-### Algoritmo de Embaralhamento
+```
+playing ─(1ª carta: inicia o cronômetro)→ playing ─(2ª carta)→ checking (800ms)
+                                                                 ├── par    → playing | completed
+                                                                 └── errou  → playing
+```
 
-Fisher-Yates (Knuth Shuffle) — O(n), distribuição uniforme garantida.
+- As regras ficam em `memory-logic.js`, com funções puras: cada jogada devolve um estado novo
+- Cada partida tem um número de rodada. Uma verificação agendada antes de reiniciar é ignorada
+- O tamanho das cartas é calculado pela largura **e** pela altura disponíveis, então o tabuleiro cabe em qualquer tela
+- Embaralhamento Fisher-Yates
 
 ---
 
-## 🚀 Como Executar
+## 🚀 Como executar
 
 ```bash
-# Instalar dependências
-npm install
+flutter pub get
+flutter run                        # emulador Android, simulador iOS ou aparelho conectado
 
-# iOS (requer Mac + Xcode)
-npm run ios
-
-# Android (requer Android Studio)
-npm run android
-
-# Testes unitários
-npm test
-
-# Verificação de tipos
-npm run type-check
+flutter analyze                    # análise estática
+flutter test                       # testes do app Flutter
+node --test test/games/*.test.js   # testes da lógica dos jogos (Node 18+)
 ```
+
+Os mesmos comandos, além de um build Android, rodam no CI a cada PR.
 
 ---
 
-## 📈 Roadmap de Melhorias
+## ♿ Pensado para crianças de 3 a 6 anos
 
-### v1.1 — Sons e Animações
-- `react-native-sound` para efeitos de acerto/erro/vitória
-- Confetes com `react-native-confetti-cannon` na tela de resultado
-- Animação de "shake" nas cartas erradas (feedback negativo suave)
+- Voz em pt-BR: nomes dos jogos, das dificuldades e dos animais, e comemoração a cada par
+- Áreas de toque de no mínimo 56px
+- Texto e botões com contraste ≥ 4.5:1 (WCAG AA)
+- Sair do jogo exige **segurar** o botão voltar do jogo ou tocar **duas vezes** no voltar do sistema
+- Cards e cartas anunciados corretamente por leitores de tela
 
-### v1.2 — Persistência de Progresso
-```typescript
-// Zustand + AsyncStorage
-interface ProgressStore {
-  highScores: Record<string, Record<Difficulty, number>>;
-  gamesPlayed: number;
-  setHighScore: (gameId: string, difficulty: Difficulty, moves: number) => void;
-}
-// persist middleware do Zustand + AsyncStorage como storage adapter
-```
+## 📈 Próximos passos
 
-### v1.3 — Mais Jogos (cada um como módulo independente)
-- **Caça ao Número**: Encontrar o número que o narrador fala
-- **Combine Cores**: Arrastar objetos para a cor correta
-- **Traçado de Letras**: Desenhar letras com o dedo (canvas)
-
-### v1.4 — Perfil da Criança
-- Múltiplos perfis por dispositivo
-- Dashboard para os pais com relatório de progresso
-- Restrição de conteúdo por faixa etária automática
-
-### v2.0 — Micro Frontends (escala para web/TV)
-Cada jogo vira um pacote npm independente carregado dinamicamente:
-```
-@miagames/memory-game
-@miagames/number-puzzle
-@miagames/color-match
-```
-O app shell registra módulos em runtime com Re.Pack (React Native) ou
-Module Federation (web).
-
----
-
-## ♿ Acessibilidade
-
-- Todos os elementos interativos têm `accessibilityLabel`
-- `accessibilityRole="button"` nos elementos pressionáveis
-- Área de toque mínima de 56px (acima dos 44pt do Apple HIG)
-- Paleta com contraste ≥ 4.5:1 (WCAG AA)
-- Compatível com VoiceOver (iOS) e TalkBack (Android)
+- Ilustrações próprias no lugar de emoji
+- Efeitos sonoros (virar, acerto, vitória)
+- Salvar estrelas e progresso (`GAME_COMPLETE` já chega ao Flutter)
+- Novos jogos: números, cores, traçado de letras

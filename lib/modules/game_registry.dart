@@ -3,12 +3,12 @@ import 'game_module.dart';
 
 final List<GameModule> gameRegistry = [
   const GameModule(
-    id:          'memory',
+    id: 'memory',
     displayName: 'Jogo da Memória',
-    icon:        '🧠',
+    icon: '🧠',
     accentColor: Color(0xFF4ECDC4),
-    ageRange:    [3, 6],
-    skills:      ['Memória', 'Atenção', 'Concentração'],
+    ageRange: [3, 6],
+    skills: ['Memória', 'Atenção', 'Concentração'],
     difficulties: [
       GameDifficulty.easy,
       GameDifficulty.medium,
@@ -22,13 +22,9 @@ final List<GameModule> gameRegistry = [
   // GameModule(id: 'letter-trace',  displayName: 'Traçar Letras', ...)
 ];
 
-GameModule? findGameById(String id) {
-  try {
-    return gameRegistry.firstWhere((g) => g.id == id);
-  } catch (_) {
-    return null;
-  }
-}
+GameModule? findGameById(String id) =>
+    gameRegistry.where((g) => g.id == id).firstOrNull;
 
-List<GameModule> getGamesForAge(int age) =>
-    gameRegistry.where((g) => g.ageRange[0] <= age && age <= g.ageRange[1]).toList();
+List<GameModule> getGamesForAge(int age) => gameRegistry
+    .where((g) => g.ageRange[0] <= age && age <= g.ageRange[1])
+    .toList();

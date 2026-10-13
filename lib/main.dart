@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'app.dart';
+import 'core/audio/narrator.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -8,5 +9,5 @@ void main() {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  runApp(const MiaGamesApp());
+  runApp(MiaGamesApp(narrator: TtsNarrator()));
 }
