@@ -45,17 +45,19 @@ class _GameScreenState extends State<GameScreen> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(AppColors.background)
-      ..setNavigationDelegate(NavigationDelegate(
-        // O jogo é local: nenhuma navegação para fora dos assets do app
-        onNavigationRequest: (request) =>
-            Uri.tryParse(request.url)?.scheme == 'file'
-                ? NavigationDecision.navigate
-                : NavigationDecision.prevent,
-        onPageFinished: (_) {
-          _sendInitConfig();
-          if (mounted) setState(() => _isLoading = false);
-        },
-      ))
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          // O jogo é local: nenhuma navegação para fora dos assets do app
+          onNavigationRequest: (request) =>
+              Uri.tryParse(request.url)?.scheme == 'file'
+              ? NavigationDecision.navigate
+              : NavigationDecision.prevent,
+          onPageFinished: (_) {
+            _sendInitConfig();
+            if (mounted) setState(() => _isLoading = false);
+          },
+        ),
+      )
       ..addJavaScriptChannel(
         'MiaGamesFlutter',
         onMessageReceived: (message) => _onGameMessage(message.message),
@@ -96,10 +98,7 @@ class _GameScreenState extends State<GameScreen> {
           child: Stack(
             children: [
               WebViewWidget(controller: _controller),
-              if (_isLoading)
-                const Center(
-                  child: CircularProgressIndicator(),
-                ),
+              if (_isLoading) const Center(child: CircularProgressIndicator()),
             ],
           ),
         ),

@@ -18,9 +18,9 @@ sealed class GameMessage {
     return switch (data['type']) {
       'NAVIGATE_BACK' => const NavigateBack(),
       'SPEAK' => switch (data['text']) {
-          final String text when text.trim().isNotEmpty => Speak(text),
-          _ => null,
-        },
+        final String text when text.trim().isNotEmpty => Speak(text),
+        _ => null,
+      },
       'GAME_COMPLETE' => GameComplete(data),
       _ => null,
     };

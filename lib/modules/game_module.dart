@@ -4,22 +4,22 @@ enum GameDifficulty { easy, medium, hard }
 
 extension GameDifficultyLabel on GameDifficulty {
   String get label => switch (this) {
-        GameDifficulty.easy => 'Fácil',
-        GameDifficulty.medium => 'Médio',
-        GameDifficulty.hard => 'Difícil',
-      };
+    GameDifficulty.easy => 'Fácil',
+    GameDifficulty.medium => 'Médio',
+    GameDifficulty.hard => 'Difícil',
+  };
 
   String get stars => switch (this) {
-        GameDifficulty.easy => '⭐',
-        GameDifficulty.medium => '⭐⭐',
-        GameDifficulty.hard => '⭐⭐⭐',
-      };
+    GameDifficulty.easy => '⭐',
+    GameDifficulty.medium => '⭐⭐',
+    GameDifficulty.hard => '⭐⭐⭐',
+  };
 
   String get description => switch (this) {
-        GameDifficulty.easy => 'Perfeito para começar',
-        GameDifficulty.medium => 'Um desafio justo',
-        GameDifficulty.hard => 'Para os especialistas',
-      };
+    GameDifficulty.easy => 'Perfeito para começar',
+    GameDifficulty.medium => 'Um desafio justo',
+    GameDifficulty.hard => 'Para os especialistas',
+  };
 }
 
 class GameModule {

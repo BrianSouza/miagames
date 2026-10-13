@@ -5,7 +5,9 @@ void main() {
   group('GameMessage.parse', () {
     test('NAVIGATE_BACK', () {
       expect(
-          GameMessage.parse('{"type":"NAVIGATE_BACK"}'), isA<NavigateBack>());
+        GameMessage.parse('{"type":"NAVIGATE_BACK"}'),
+        isA<NavigateBack>(),
+      );
     });
 
     test('SPEAK traz o texto', () {

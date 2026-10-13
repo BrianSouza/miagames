@@ -20,6 +20,7 @@ class AppColors {
   static const Color surface = Color(0xFFFFFFFF);
   static const Color textPrimary = Color(0xFF2D3436);
   static const Color textSecond = Color(0xFF636E72);
-  static const Color textLight =
-      Color(0xFFB2BEC3); // só decorativo — contraste baixo para texto
+  static const Color textLight = Color(
+    0xFFB2BEC3,
+  ); // só decorativo — contraste baixo para texto
 }

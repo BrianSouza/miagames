@@ -11,9 +11,8 @@ void main() {
             onPressed: () => Navigator.push<void>(
               context,
               MaterialPageRoute(
-                builder: (_) => const ExitGuard(
-                  child: Scaffold(body: Text('jogo')),
-                ),
+                builder: (_) =>
+                    const ExitGuard(child: Scaffold(body: Text('jogo'))),
               ),
             ),
             child: const Text('abrir'),

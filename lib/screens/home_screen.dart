@@ -35,11 +35,8 @@ class HomeScreen extends StatelessWidget {
           Navigator.push<void>(
             context,
             MaterialPageRoute(
-              builder: (_) => GameScreen(
-                game: game,
-                difficulty: diff,
-                narrator: narrator,
-              ),
+              builder: (_) =>
+                  GameScreen(game: game, difficulty: diff, narrator: narrator),
             ),
           );
         },
@@ -97,16 +94,16 @@ class _Header extends StatelessWidget {
           Text(
             '🎮 MiaGames',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
             'Escolha um jogo para começar!',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecond,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecond),
           ),
         ],
       ),
@@ -160,9 +157,9 @@ class _GameCard extends StatelessWidget {
                 child: Text(
                   game.displayName,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -186,10 +183,10 @@ class _GameCard extends StatelessWidget {
                     child: Text(
                       skill,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            // texto escuro: a cor do jogo sobre o fundo claro dela não tem contraste
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        // texto escuro: a cor do jogo sobre o fundo claro dela não tem contraste
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   );
                 }).toList(),
@@ -227,74 +224,68 @@ class _DifficultySheet extends StatelessWidget {
           Text(
             '${game.icon}  ${game.displayName}',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
             'Escolha a dificuldade:',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecond,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecond),
           ),
           const SizedBox(height: AppSpacing.lg),
-          ...game.difficulties.map((diff) => Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () => onSelect(diff),
-                    style: OutlinedButton.styleFrom(
-                      // Altura mínima de toque, mas pode crescer se o texto quebrar
-                      minimumSize:
-                          const Size.fromHeight(AppSpacing.touchTarget),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md,
-                        vertical: AppSpacing.sm,
-                      ),
-                      side: BorderSide(color: game.accentColor, width: 2),
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(AppSpacing.radiusMd),
-                      ),
+          ...game.difficulties.map(
+            (diff) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => onSelect(diff),
+                  style: OutlinedButton.styleFrom(
+                    // Altura mínima de toque, mas pode crescer se o texto quebrar
+                    minimumSize: const Size.fromHeight(AppSpacing.touchTarget),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.sm,
                     ),
-                    child: Row(
-                      children: [
-                        Text(diff.stars, style: const TextStyle(fontSize: 18)),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                diff.label,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.textPrimary,
-                                    ),
-                              ),
-                              Text(
-                                diff.description,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
-                                    ?.copyWith(
-                                      color: AppColors.textSecond,
-                                    ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    side: BorderSide(color: game.accentColor, width: 2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                     ),
                   ),
+                  child: Row(
+                    children: [
+                      Text(diff.stars, style: const TextStyle(fontSize: 18)),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              diff.label,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                            ),
+                            Text(
+                              diff.description,
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(color: AppColors.textSecond),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              )),
+              ),
+            ),
+          ),
           const SizedBox(height: AppSpacing.md),
         ],
       ),
