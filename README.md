@@ -43,7 +43,8 @@ miagames/
 ├── tool/generate_illustrations.py ← Gera os SVGs (python3, sem dependências)
 ├── test/
 │   ├── *_test.dart                ← Testes Flutter
-│   └── games/*.test.js            ← Testes da lógica dos jogos (node --test)
+│   ├── games/*.test.js            ← Testes da lógica dos jogos (node --test)
+│   └── e2e/*.spec.js              ← Testes de navegador (Playwright)
 ├── android/  ios/                 ← Projetos nativos
 └── pubspec.yaml
 ```
@@ -104,9 +105,27 @@ flutter run                        # emulador Android, simulador iOS ou aparelho
 flutter analyze                    # análise estática
 flutter test                       # testes do app Flutter
 node --test test/games/*.test.js   # testes da lógica dos jogos (Node 18+)
+
+npm ci && npx playwright install chromium   # uma vez, para os testes de navegador
+npm run test:e2e                   # testes de navegador (Playwright)
+npm run test:e2e:ui                # o mesmo, no modo interativo
 ```
 
 Os mesmos comandos, além de um build Android, rodam no CI a cada PR.
+
+### Testes de navegador (Playwright)
+
+Os mini-jogos são HTML; os testes em `test/e2e/` abrem o jogo real num Chromium
+e simulam a ponte do Flutter (`SPEAK`, `GAME_COMPLETE`, `NAVIGATE_BACK`).
+`test/e2e/fixtures.js` cuida de três coisas:
+
+- **Relógio falso e pausado** (`page.clock`): o tempo só avança com `game.tick(ms)`,
+  então os testes não dependem da velocidade da máquina nem usam esperas fixas
+- **Web Audio espiada**: `game.notes()` conta as notas tocadas
+- **Erros viram falha**: qualquer erro de página, `console.error` ou ilustração que
+  não carrega derruba o teste
+
+Para cobrir um jogo novo, abra-o com `fixtures.js` ou crie uma fixture parecida.
 
 ---
 

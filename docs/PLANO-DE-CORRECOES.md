@@ -33,6 +33,7 @@ Legenda: ✅ feito · ⏭️ fica para depois
 | 2.2 | Nenhum teste da lógica do jogo | Testes com `node --test` em `test/games/` (sem dependências; fora de `assets/` para não irem dentro do app) | ✅ |
 | 2.3 | Um único teste de widget, sem cobrir a navegação | Testes da Home, do seletor de dificuldade, da narração e da ponte com o jogo | ✅ |
 | 2.4 | Sem CI | GitHub Actions: `flutter analyze`, `flutter test` e `node --test` | ✅ |
+| 2.5 | O jogo só era conferido à mão, num navegador | **Testes de navegador com Playwright** (`test/e2e/`, 54 testes): partida completa, bug do reinício, segurar para sair, sons, recorde e tabuleiro em 6 tamanhos de tela × 3 dificuldades. O relógio é falso e pausado, então os testes são rápidos e deterministas. Rodam no CI, com relatório e traces em caso de falha | ✅ |
 
 ## Fase 3 — Corretude da lógica do jogo
 
@@ -71,4 +72,6 @@ flutter run                      # emulador Android, simulador iOS ou aparelho c
 flutter analyze                  # análise estática
 flutter test                     # testes do app Flutter
 node --test test/games/*.test.js # testes da lógica dos jogos (Node 18+)
+npm ci && npx playwright install chromium   # uma vez
+npm run test:e2e                 # testes de navegador (Playwright)
 ```
