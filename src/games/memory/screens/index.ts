@@ -1,1 +1,0 @@
-export { MemoryGameScreen } from './MemoryGameScreen';
