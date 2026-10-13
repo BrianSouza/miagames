@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, StyleSheet, useWindowDimensions } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, type LayoutChangeEvent } from 'react-native';
 
 import { Spacing } from '../../../core/theme';
-import { MemoryCard } from './MemoryCard';
+import { MemoryCard, CARD_MARGIN } from './MemoryCard';
 import type { MemoryCard as MemoryCardType, GamePhase, DifficultyConfig } from '../types';
 
 interface Props {
@@ -12,42 +12,65 @@ interface Props {
   onCardPress: (id: number) => void;
 }
 
+const BOARD_PADDING = Spacing.md;
+
+/**
+ * Lado da carta que faz o grid inteiro caber na área disponível.
+ * Considera largura E altura — em tablets e no modo paisagem a altura
+ * é o limite, e um cálculo só pela largura faria o tabuleiro estourar a tela.
+ */
+export function computeCardSize(
+  width: number,
+  height: number,
+  columns: number,
+  rows: number,
+): number {
+  const byWidth = (width - BOARD_PADDING * 2) / columns - CARD_MARGIN * 2;
+  const byHeight = (height - BOARD_PADDING * 2) / rows - CARD_MARGIN * 2;
+  return Math.max(0, Math.floor(Math.min(byWidth, byHeight)));
+}
+
 /**
  * MemoryBoard — o tabuleiro do jogo.
  *
  * Responsabilidade única: organizar as cartas em um grid responsivo.
- * Calcula o tamanho ideal de cada carta baseado na largura da tela
- * e no número de colunas definido pela dificuldade.
+ * Mede o espaço que sobrou na tela (onLayout) e calcula o tamanho ideal
+ * de cada carta a partir do número de colunas e linhas da dificuldade.
  *
  * Separar Board de Card segue o Single Responsibility Principle:
  * - Board sabe onde colocar as cartas
  * - Card sabe como renderizar e animar uma carta individual
  */
 export function MemoryBoard({ cards, config, phase, onCardPress }: Props) {
-  const { width } = useWindowDimensions();
+  const [area, setArea] = useState<{ width: number; height: number } | null>(null);
 
-  // Calcula tamanho da carta para preencher a largura disponível
-  const horizontalPadding = Spacing.md * 2;
-  const cardMargin = 8;  // margem de cada lado (4px * 2)
-  const availableWidth = width - horizontalPadding - cardMargin * config.columns;
-  const cardSize = Math.floor(availableWidth / config.columns);
+  function handleLayout(event: LayoutChangeEvent) {
+    const { width, height } = event.nativeEvent.layout;
+    setArea({ width, height });
+  }
+
+  const rows = Math.ceil(cards.length / config.columns);
+  const cardSize = area ? computeCardSize(area.width, area.height, config.columns, rows) : 0;
+  const gridWidth = (cardSize + CARD_MARGIN * 2) * config.columns;
 
   const isDisabled = phase === 'checking' || phase === 'completed';
 
   return (
-    <View style={styles.board}>
+    <View style={styles.board} onLayout={handleLayout} testID="memory-board">
       {/* Grid de cartas — usamos flexWrap para montar automaticamente as linhas */}
-      <View style={[styles.grid, { width: width - horizontalPadding }]}>
-        {cards.map(card => (
-          <MemoryCard
-            key={card.id}
-            card={card}
-            size={cardSize}
-            onPress={onCardPress}
-            disabled={isDisabled}
-          />
-        ))}
-      </View>
+      {cardSize > 0 && (
+        <View style={[styles.grid, { width: gridWidth }]}>
+          {cards.map(card => (
+            <MemoryCard
+              key={card.id}
+              card={card}
+              size={cardSize}
+              onPress={onCardPress}
+              disabled={isDisabled}
+            />
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -57,7 +80,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: Spacing.md,
+    padding: BOARD_PADDING,
   },
   grid: {
     flexDirection: 'row',

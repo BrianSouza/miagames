@@ -1,9 +1,9 @@
 /**
- * Ponto de entrada do React Native.
+ * Ponto de entrada do app.
  * Este arquivo é carregado pelo Metro Bundler e não deve conter lógica de negócio.
+ * registerRootComponent registra o App e funciona no Expo Go e em builds nativos.
  */
-import { AppRegistry } from 'react-native';
+import { registerRootComponent } from 'expo';
 import App from './App';
-import { name as appName } from './app.json';
 
-AppRegistry.registerComponent(appName, () => App);
+registerRootComponent(App);

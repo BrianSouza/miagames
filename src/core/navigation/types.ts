@@ -1,6 +1,13 @@
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
+export type GameDifficulty = 'easy' | 'medium' | 'hard';
+
+/** Parâmetros que toda tela de jogo recebe (vindos do seletor de dificuldade) */
+export type GameRouteParams = {
+  difficulty?: GameDifficulty;
+};
+
 /**
  * Mapa centralizado de todas as rotas do app.
  * Adicionar novos jogos = adicionar uma entrada aqui + registrar em gameRegistry.
@@ -8,13 +15,14 @@ import type { RouteProp } from '@react-navigation/native';
  */
 export type RootStackParamList = {
   Home: undefined;
-  MemoryGame: {
-    difficulty?: 'easy' | 'medium' | 'hard';
-  };
+  MemoryGame: GameRouteParams;
   // Futuros jogos são adicionados aqui:
-  // NumberPuzzle: { level?: number };
-  // ColorMatch: undefined;
+  // NumberPuzzle: GameRouteParams;
+  // ColorMatch: GameRouteParams;
 };
+
+/** Rotas que pertencem a jogos (todas exceto a Home) */
+export type GameRoute = Exclude<keyof RootStackParamList, 'Home'>;
 
 export type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 

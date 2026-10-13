@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 
 import { Colors, Spacing, FontSize, BorderRadius, TouchTargetSize } from '../../../core/theme';
@@ -11,29 +11,51 @@ interface Props {
   onReset: () => void;
 }
 
+/** Quanto tempo o botão voltar precisa ficar pressionado para sair */
+export const EXIT_HOLD_MS = 700;
+const HINT_DURATION_MS = 2000;
+
 /**
  * GameHeader — barra superior do jogo.
  * Exibe progresso (pares encontrados) e botões de ação.
  * Botões grandes para dedos pequenos (>= TouchTargetSize = 56px).
+ *
+ * Para sair é preciso SEGURAR o botão voltar: crianças pequenas tocam
+ * em tudo, e um toque acidental não deve encerrar a partida.
+ * Um toque curto só mostra a dica para o adulto.
  */
 export function GameHeader({ stats, config, onBack, onReset }: Props) {
   const progress = `${stats.matchesFound} / ${stats.totalPairs}`;
+  const [showExitHint, setShowExitHint] = useState(false);
+
+  useEffect(() => {
+    if (!showExitHint) return;
+    const timer = setTimeout(() => setShowExitHint(false), HINT_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [showExitHint]);
 
   return (
     <View style={styles.container}>
       {/* Botão Voltar */}
       <Pressable
-        onPress={onBack}
+        onPress={() => setShowExitHint(true)}
+        onLongPress={onBack}
+        delayLongPress={EXIT_HOLD_MS}
         style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
         hitSlop={8}
         accessibilityLabel="Voltar para a tela inicial"
+        accessibilityHint="Segure para sair do jogo"
+        accessibilityActions={[{ name: 'activate' }]}
+        onAccessibilityAction={onBack}
       >
         <Text style={styles.iconButtonText}>←</Text>
       </Pressable>
 
       {/* Indicador de progresso central */}
       <View style={styles.progressContainer}>
-        <Text style={styles.progressLabel}>Pares</Text>
+        <Text style={styles.progressLabel}>
+          {showExitHint ? '✋ Segure ← para sair' : 'Pares'}
+        </Text>
         <Text style={styles.progressValue}>{progress}</Text>
         <View style={styles.difficultyBadge}>
           <Text style={styles.difficultyText}>{config.emoji} {config.label}</Text>

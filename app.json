@@ -1,4 +1,20 @@
 {
-  "name": "MiaGames",
-  "displayName": "MiaGames"
+  "expo": {
+    "name": "MiaGames",
+    "slug": "miagames",
+    "version": "1.0.0",
+    "orientation": "default",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FFF9F0",
+    "splash": {
+      "backgroundColor": "#FFF9F0"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.miagames.app"
+    },
+    "android": {
+      "package": "com.miagames.app"
+    }
+  }
 }

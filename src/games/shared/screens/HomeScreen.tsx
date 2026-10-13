@@ -5,18 +5,17 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
   Modal,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
 import { Colors, Spacing, FontSize, BorderRadius, TouchTargetSize } from '../../../core/theme';
+import { speak } from '../../../core/audio';
 import { gameRegistry } from '../../../modules/gameRegistry';
-import type { GameModule } from '../../../modules/types';
-import type { NavigationProp, RootStackParamList } from '../../../core/navigation';
-import { DIFFICULTY_CONFIGS } from '../../../games/memory/hooks';
-import type { Difficulty } from '../../../games/memory/types';
+import type { GameModule, GameDifficultyOption, GameSkill } from '../../../modules/types';
+import type { NavigationProp, GameDifficulty } from '../../../core/navigation';
 
 /**
  * HomeScreen — tela inicial do app.
@@ -25,25 +24,30 @@ import type { Difficulty } from '../../../games/memory/types';
  * Adicionar um novo jogo ao registry = ele aparece aqui sem mudar este arquivo.
  *
  * DifficultyPicker é um modal simples de seleção — evita uma tela extra
- * e mantém o fluxo de interação rápido para crianças.
+ * e mantém o fluxo de interação rápido para crianças. Ele aparece para
+ * qualquer jogo que declare difficultyOptions no seu GameModule.
+ *
+ * Os nomes são falados ao toque, para quem ainda não sabe ler.
  */
 export function HomeScreen() {
   const navigation = useNavigation<NavigationProp>();
   const [selectedGame, setSelectedGame] = useState<GameModule | null>(null);
 
   function handleGameSelect(game: GameModule) {
+    speak(game.displayName);
     // Jogos sem configuração prévia navegam direto
-    if (game.route === 'MemoryGame') {
+    if (game.difficultyOptions?.length) {
       setSelectedGame(game);
     } else {
-      navigation.navigate(game.route as keyof RootStackParamList, game.defaultParams as never);
+      navigation.navigate(game.route, {});
     }
   }
 
-  function handleDifficultySelect(difficulty: Difficulty) {
+  function handleDifficultySelect(option: GameDifficultyOption) {
     if (!selectedGame) return;
+    speak(option.label);
     setSelectedGame(null);
-    navigation.navigate('MemoryGame', { difficulty });
+    navigation.navigate(selectedGame.route, { difficulty: option.id });
   }
 
   return (
@@ -79,6 +83,7 @@ export function HomeScreen() {
       <DifficultyPicker
         visible={selectedGame !== null}
         gameName={selectedGame?.displayName ?? ''}
+        options={selectedGame?.difficultyOptions ?? []}
         onSelect={handleDifficultySelect}
         onCancel={() => setSelectedGame(null)}
       />
@@ -110,7 +115,7 @@ function GameCard({ game, onPress }: { game: GameModule; onPress: () => void }) 
       <View style={styles.tagsRow}>
         {game.metadata.skills.slice(0, 2).map(skill => (
           <View key={skill} style={styles.skillTag}>
-            <Text style={styles.skillTagText}>{SKILL_LABELS[skill] ?? skill}</Text>
+            <Text style={styles.skillTagText}>{SKILL_LABELS[skill]}</Text>
           </View>
         ))}
       </View>
@@ -118,7 +123,7 @@ function GameCard({ game, onPress }: { game: GameModule; onPress: () => void }) 
   );
 }
 
-const SKILL_LABELS: Record<string, string> = {
+const SKILL_LABELS: Record<GameSkill, string> = {
   letters: '🔤 Letras',
   numbers: '🔢 Números',
   memory: '🧠 Memória',
@@ -133,14 +138,13 @@ const SKILL_LABELS: Record<string, string> = {
 interface DifficultyPickerProps {
   visible: boolean;
   gameName: string;
-  onSelect: (difficulty: Difficulty) => void;
+  options: GameDifficultyOption[];
+  onSelect: (option: GameDifficultyOption) => void;
   onCancel: () => void;
 }
 
-function DifficultyPicker({ visible, gameName, onSelect, onCancel }: DifficultyPickerProps) {
-  const difficulties: Difficulty[] = ['easy', 'medium', 'hard'];
-
-  const difficultyColors: Record<Difficulty, string> = {
+function DifficultyPicker({ visible, gameName, options, onSelect, onCancel }: DifficultyPickerProps) {
+  const difficultyColors: Record<GameDifficulty, string> = {
     easy:   Colors.success,
     medium: Colors.warning,
     hard:   Colors.error,
@@ -161,31 +165,30 @@ function DifficultyPicker({ visible, gameName, onSelect, onCancel }: DifficultyP
           <Text style={styles.sheetTitle}>🎯 {gameName}</Text>
           <Text style={styles.sheetSubtitle}>Escolha a dificuldade:</Text>
 
-          {difficulties.map(diff => {
-            const config = DIFFICULTY_CONFIGS[diff];
-            return (
-              <Pressable
-                key={diff}
-                onPress={() => onSelect(diff)}
-                style={({ pressed }) => [
-                  styles.difficultyButton,
-                  { backgroundColor: difficultyColors[diff] },
-                  pressed && styles.cardPressed,
-                ]}
-                accessibilityLabel={`Dificuldade ${config.label}: ${config.pairs} pares`}
-              >
-                <Text style={styles.difficultyEmoji}>{config.emoji}</Text>
-                <View style={styles.difficultyInfo}>
-                  <Text style={styles.difficultyName}>{config.label}</Text>
-                  <Text style={styles.difficultyDetails}>{config.pairs} pares de cartas</Text>
-                </View>
-              </Pressable>
-            );
-          })}
+          {options.map(option => (
+            <Pressable
+              key={option.id}
+              onPress={() => onSelect(option)}
+              style={({ pressed }) => [
+                styles.difficultyButton,
+                { backgroundColor: difficultyColors[option.id] },
+                pressed && styles.cardPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={`Dificuldade ${option.label}: ${option.detail}`}
+            >
+              <Text style={styles.difficultyEmoji}>{option.emoji}</Text>
+              <View style={styles.difficultyInfo}>
+                <Text style={styles.difficultyName}>{option.label}</Text>
+                <Text style={styles.difficultyDetails}>{option.detail}</Text>
+              </View>
+            </Pressable>
+          ))}
 
           <Pressable
             onPress={onCancel}
             style={({ pressed }) => [styles.cancelButton, pressed && styles.cardPressed]}
+            accessibilityRole="button"
           >
             <Text style={styles.cancelButtonText}>Cancelar</Text>
           </Pressable>
@@ -332,15 +335,15 @@ const styles = StyleSheet.create({
   difficultyInfo: {
     flex: 1,
   },
+  // Texto escuro: branco sobre o verde/amarelo dos botões tinha contraste ~2:1
   difficultyName: {
     fontSize: FontSize.md,
     fontWeight: '900',
-    color: Colors.textOnPrimary,
+    color: Colors.textPrimary,
   },
   difficultyDetails: {
     fontSize: FontSize.xs,
-    color: Colors.textOnPrimary,
-    opacity: 0.85,
+    color: Colors.textPrimary,
   },
   cancelButton: {
     height: TouchTargetSize,

@@ -1,6 +1,8 @@
 # 🎮 MiaGames
 
-App mobile de jogos educativos para crianças de 3 a 6 anos, construído com React Native + TypeScript.
+App mobile de jogos educativos para crianças de 3 a 6 anos, construído com React Native + TypeScript sobre o **Expo SDK 50**.
+
+> Histórico de correções e próximos passos: [`docs/PLANO-DE-CORRECOES.md`](docs/PLANO-DE-CORRECOES.md).
 
 ---
 
@@ -10,8 +12,10 @@ App mobile de jogos educativos para crianças de 3 a 6 anos, construído com Rea
 MiaGames/
 ├── src/
 │   ├── core/                        ← Infraestrutura transversal
+│   │   ├── audio/
+│   │   │   └── speech.ts            ← Narração por voz (expo-speech, pt-BR)
 │   │   ├── navigation/
-│   │   │   ├── RootNavigator.tsx    ← Declaração de todas as rotas
+│   │   │   ├── RootNavigator.tsx    ← Home + uma rota por jogo do registry
 │   │   │   ├── types.ts             ← RootStackParamList (tipagem de rotas)
 │   │   │   └── index.ts
 │   │   ├── theme/
@@ -38,7 +42,7 @@ MiaGames/
 │           ├── types/
 │           │   └── index.ts         ← MemoryCard, Difficulty, GameStats, etc.
 │           ├── hooks/
-│           │   └── useMemoryGame.ts ← Toda a lógica do jogo em um hook
+│           │   └── useMemoryGame.ts ← Reducer puro com as regras + hook
 │           ├── components/
 │           │   ├── MemoryCard.tsx   ← Carta individual com animação de flip 3D
 │           │   ├── MemoryBoard.tsx  ← Grid responsivo de cartas
@@ -65,7 +69,9 @@ interface GameModule {
   displayName: string;
   icon: string;
   accentColor: string;
-  route: keyof RootStackParamList;
+  route: GameRoute;                         // chave em RootStackParamList
+  screen: ComponentType;                    // registrada no navigator automaticamente
+  difficultyOptions?: GameDifficultyOption[]; // se houver, a Home mostra o seletor
   metadata: { ageRange, skills, difficulty };
 }
 ```
@@ -74,15 +80,15 @@ Para **adicionar um novo jogo**, você só precisa:
 1. Criar `src/games/<nome>/` com a estrutura padrão
 2. Exportar um `GameModule` de `src/games/<nome>/index.ts`
 3. Importar e adicionar ao array em `src/modules/gameRegistry.ts`
-4. Adicionar a rota em `RootStackParamList` e `RootNavigator`
+4. Declarar a rota em `RootStackParamList` (`src/core/navigation/types.ts`) — o TypeScript avisa se faltar
 
-A `HomeScreen` e o restante do app funcionam automaticamente.
+A `HomeScreen`, o seletor de dificuldade e o `RootNavigator` se adaptam automaticamente.
 
 ### 2. Separação de Responsabilidades
 
 | Camada | Arquivo | Responsabilidade |
 |--------|---------|------------------|
-| Lógica | `useMemoryGame.ts` | Estado, regras, timers |
+| Lógica | `useMemoryGame.ts` | Reducer puro (regras) + hook (timer de verificação) |
 | Layout | `MemoryBoard.tsx` | Grid e tamanho de cartas |
 | Apresentação | `MemoryCard.tsx` | Animação e aparência da carta |
 | Orquestração | `MemoryGameScreen.tsx` | Conecta hook + componentes |
@@ -92,7 +98,7 @@ A `HomeScreen` e o restante do app funcionam automaticamente.
 
 - **Local com hook**: O estado do jogo é local à tela (`useMemoryGame`). Não há necessidade de estado global para uma partida.
 - **Sem Redux/Zustand no MVP**: Adicionamos Zustand apenas quando o progresso precisar persistir entre sessões (ver roadmap).
-- **Imutabilidade**: Todo `setState` usa funções puras que retornam novos objetos/arrays.
+- **Reducer puro**: as regras ficam em `memoryGameReducer`, sem timers nem efeitos colaterais — seguro com `StrictMode` e testável sem renderizar nada. O atraso de 800ms é um `useEffect` que reage à fase `checking`.
 
 ### 4. Performance
 
@@ -100,6 +106,7 @@ A `HomeScreen` e o restante do app funcionam automaticamente.
 - `backfaceVisibility: 'hidden'` → evita renderização da face invisível durante o flip
 - `Pressable` com `hitSlop` → área de toque maior sem aumentar o visual
 - `useCallback` no `flipCard` → evita re-criação desnecessária
+- Tamanho das cartas calculado pela largura **e** altura disponíveis → o tabuleiro cabe na tela em celular, tablet e paisagem
 
 ---
 
@@ -109,7 +116,7 @@ A `HomeScreen` e o restante do app funcionam automaticamente.
 
 ```
 idle
- └── (flipCard) → playing
+ └── (flipCard — inicia o cronômetro) → playing
                     └── (flipCard 2ª carta) → checking (800ms)
                                                 ├── (match)    → playing | completed
                                                 └── (no match) → playing
@@ -135,17 +142,20 @@ Fisher-Yates (Knuth Shuffle) — O(n), distribuição uniforme garantida.
 # Instalar dependências
 npm install
 
-# iOS (requer Mac + Xcode)
+# Servidor de desenvolvimento — leia o QR code com o app Expo Go no celular
+npm start
+
+# Abrir direto no emulador Android / simulador iOS (requer Android Studio / Xcode)
+npm run android
 npm run ios
 
-# Android (requer Android Studio)
-npm run android
+# Gerar o projeto nativo (android/ e ios/) para builds de loja
+npx expo prebuild
 
-# Testes unitários
+# Qualidade (os mesmos comandos rodam no CI a cada PR)
 npm test
-
-# Verificação de tipos
 npm run type-check
+npm run lint
 ```
 
 ---
@@ -153,7 +163,8 @@ npm run type-check
 ## 📈 Roadmap de Melhorias
 
 ### v1.1 — Sons e Animações
-- `react-native-sound` para efeitos de acerto/erro/vitória
+- ✅ Narração por voz das cartas, dos jogos e das dificuldades (`expo-speech`)
+- `expo-av` para efeitos de acerto/erro/vitória
 - Confetes com `react-native-confetti-cannon` na tela de resultado
 - Animação de "shake" nas cartas erradas (feedback negativo suave)
 
@@ -195,5 +206,7 @@ Module Federation (web).
 - Todos os elementos interativos têm `accessibilityLabel`
 - `accessibilityRole="button"` nos elementos pressionáveis
 - Área de toque mínima de 56px (acima dos 44pt do Apple HIG)
-- Paleta com contraste ≥ 4.5:1 (WCAG AA)
+- Símbolos das cartas com contraste ≥ 4.5:1 sobre o branco (WCAG AA)
+- Narração por voz para quem ainda não lê
+- Sair do jogo exige segurar o botão voltar (evita saídas acidentais)
 - Compatível com VoiceOver (iOS) e TalkBack (Android)

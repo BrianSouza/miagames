@@ -61,7 +61,7 @@ export function ResultModal({ visible, stats, elapsedSeconds, onPlayAgain, onGoH
 
   // Classificação baseada em movimentos (menos = melhor)
   const getRating = (): string => {
-    const efficiency = stats.totalPairs / stats.moves;
+    const efficiency = stats.moves > 0 ? stats.totalPairs / stats.moves : 0;
     if (efficiency >= 0.8) return '⭐⭐⭐';
     if (efficiency >= 0.5) return '⭐⭐';
     return '⭐';
@@ -73,7 +73,7 @@ export function ResultModal({ visible, stats, elapsedSeconds, onPlayAgain, onGoH
       transparent
       animationType="none"
       statusBarTranslucent
-      onRequestClose={onPlayAgain}
+      onRequestClose={onGoHome}   // botão voltar do Android = sair, não reiniciar
     >
       {/* Overlay escurecido */}
       <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>

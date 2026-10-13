@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useReducer, useEffect, useCallback } from 'react';
 
 import { shuffleArray } from '../../../core/utils';
 import { Colors } from '../../../core/theme';
@@ -18,13 +18,16 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   hard:   { pairs: 10, columns: 4, label: 'Difícil', emoji: '⭐⭐⭐' },
 };
 
+/** Tempo (ms) que as duas cartas ficam visíveis antes da verificação */
+export const CHECK_DELAY_MS = 800;
+
 // Símbolos disponíveis para as cartas (letras + números, visualmente distintos)
 const SYMBOLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
                  '1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 
 // ─── Funções auxiliares puras (sem efeitos colaterais) ─────────────────────
 
-function createCards(pairs: number): MemoryCard[] {
+export function createCards(pairs: number): MemoryCard[] {
   const symbols = shuffleArray(SYMBOLS).slice(0, pairs);
   const colorPool = [...Colors.letterColors];
 
@@ -45,135 +48,178 @@ function makeInitialStats(totalPairs: number): GameStats {
     moves: 0,
     matchesFound: 0,
     totalPairs,
-    startedAt: Date.now(),
   };
+}
+
+// ─── Reducer ──────────────────────────────────────────────────────────────────
+
+export interface MemoryGameState {
+  cards: MemoryCard[];
+  phase: GamePhase;
+  stats: GameStats;
+  flippedIds: number[];
+}
+
+export type MemoryGameAction =
+  | { type: 'flip'; cardId: number; now: number }
+  | { type: 'resolve'; now: number }
+  | { type: 'reset'; pairs: number };
+
+export function createInitialState(pairs: number): MemoryGameState {
+  return {
+    cards: createCards(pairs),
+    phase: 'idle',
+    stats: makeInitialStats(pairs),
+    flippedIds: [],
+  };
+}
+
+function setCardsState(
+  cards: MemoryCard[],
+  ids: number[],
+  state: MemoryCard['state'],
+): MemoryCard[] {
+  return cards.map(c => (ids.includes(c.id) ? { ...c, state } : c));
+}
+
+/**
+ * Toda a regra do jogo, em uma função pura.
+ * Sem timers nem efeitos — fácil de testar e seguro com StrictMode.
+ */
+export function memoryGameReducer(
+  state: MemoryGameState,
+  action: MemoryGameAction,
+): MemoryGameState {
+  switch (action.type) {
+    case 'flip': {
+      // Bloqueia interação durante verificação, jogo concluído
+      // ou quando já há duas cartas abertas
+      if (state.phase === 'checking' || state.phase === 'completed') return state;
+      if (state.flippedIds.length >= 2) return state;
+
+      const card = state.cards.find(c => c.id === action.cardId);
+      // Ignora clique em carta já virada ou já pareada
+      if (!card || card.state !== 'hidden') return state;
+
+      const flippedIds = [...state.flippedIds, action.cardId];
+      const cards = setCardsState(state.cards, [action.cardId], 'flipped');
+      // O cronômetro começa no primeiro toque, não quando o tabuleiro aparece
+      const startedAt = state.stats.startedAt ?? action.now;
+
+      if (flippedIds.length === 1) {
+        return {
+          ...state,
+          cards,
+          flippedIds,
+          phase: 'playing',
+          stats: { ...state.stats, startedAt },
+        };
+      }
+
+      // Segunda carta — a verificação é agendada pelo hook
+      return {
+        ...state,
+        cards,
+        flippedIds,
+        phase: 'checking',
+        stats: { ...state.stats, startedAt, moves: state.stats.moves + 1 },
+      };
+    }
+
+    case 'resolve': {
+      if (state.phase !== 'checking' || state.flippedIds.length !== 2) return state;
+
+      const [firstId, secondId] = state.flippedIds;
+      const first = state.cards.find(c => c.id === firstId);
+      const second = state.cards.find(c => c.id === secondId);
+      const isMatch = !!first && !!second && first.pairId === second.pairId;
+
+      if (!isMatch) {
+        // Não é par — esconde as duas cartas
+        return {
+          ...state,
+          cards: setCardsState(state.cards, state.flippedIds, 'hidden'),
+          flippedIds: [],
+          phase: 'playing',
+        };
+      }
+
+      // Marca ambas como 'matched' — ficam visíveis para sempre
+      const matchesFound = state.stats.matchesFound + 1;
+      const isCompleted = matchesFound === state.stats.totalPairs;
+
+      return {
+        ...state,
+        cards: setCardsState(state.cards, state.flippedIds, 'matched'),
+        flippedIds: [],
+        phase: isCompleted ? 'completed' : 'playing',
+        stats: {
+          ...state.stats,
+          matchesFound,
+          completedAt: isCompleted ? action.now : undefined,
+        },
+      };
+    }
+
+    case 'reset':
+      return createInitialState(action.pairs);
+  }
 }
 
 // ─── Hook principal ───────────────────────────────────────────────────────────
 
 /**
- * useMemoryGame — toda a lógica do jogo da memória em um único hook.
+ * useMemoryGame — conecta o reducer do jogo da memória ao React.
  *
  * Por que um hook customizado e não um Context/Zustand?
  * - O estado do jogo é LOCAL a uma partida. Não precisa ser global.
  * - Hooks são mais simples de testar e compor.
  * - Se amanhã precisarmos de estado global (salvar progresso), basta
- *   extrair a lógica para um store sem mudar a interface do hook.
+ *   mover o reducer para um store sem mudar a interface do hook.
  *
  * Fluxo do jogo:
- *   idle → (startGame) → playing → (flipCard) → checking → playing
- *                                                         → completed
+ *   idle → (flipCard) → playing → (2ª carta) → checking → playing
+ *                                                       → completed
  */
 export function useMemoryGame(difficulty: Difficulty = 'easy') {
   const config = DIFFICULTY_CONFIGS[difficulty];
 
-  const [cards, setCards] = useState<MemoryCard[]>(() => createCards(config.pairs));
-  const [phase, setPhase] = useState<GamePhase>('idle');
-  const [stats, setStats] = useState<GameStats>(() => makeInitialStats(config.pairs));
-  const [flippedIds, setFlippedIds] = useState<number[]>([]);
+  const [state, dispatch] = useReducer(
+    memoryGameReducer,
+    config.pairs,
+    createInitialState,
+  );
+  const { cards, phase, stats, flippedIds } = state;
 
-  // Ref para o timer de "esconder cartas não pareadas"
-  // Usamos ref (não state) para evitar re-renders desnecessários
-  const checkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Limpa timer ao desmontar (evita memory leak e setState em componente desmontado)
+  // Se a dificuldade mudar com a tela montada, monta um tabuleiro novo
   useEffect(() => {
-    return () => {
-      if (checkTimerRef.current) clearTimeout(checkTimerRef.current);
-    };
+    if (stats.totalPairs !== config.pairs) {
+      dispatch({ type: 'reset', pairs: config.pairs });
+    }
+  }, [config.pairs, stats.totalPairs]);
+
+  // Duas cartas abertas → espera um pouco (tempo para a criança ver) e verifica.
+  // O cleanup cancela o timer no reset e ao desmontar.
+  useEffect(() => {
+    if (phase !== 'checking') return;
+    const timer = setTimeout(
+      () => dispatch({ type: 'resolve', now: Date.now() }),
+      CHECK_DELAY_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [phase]);
+
+  const flipCard = useCallback((cardId: number) => {
+    dispatch({ type: 'flip', cardId, now: Date.now() });
   }, []);
 
-  // ─── Reiniciar jogo ────────────────────────────────────────────────────────
   const resetGame = useCallback(() => {
-    if (checkTimerRef.current) clearTimeout(checkTimerRef.current);
-    setCards(createCards(config.pairs));
-    setPhase('idle');
-    setStats(makeInitialStats(config.pairs));
-    setFlippedIds([]);
+    dispatch({ type: 'reset', pairs: config.pairs });
   }, [config.pairs]);
-
-  // ─── Virar uma carta ───────────────────────────────────────────────────────
-  const flipCard = useCallback((cardId: number) => {
-    // Bloqueia interação durante verificação ou jogo concluído
-    if (phase === 'checking' || phase === 'completed') return;
-
-    setCards(prev => {
-      const card = prev.find(c => c.id === cardId);
-      // Ignora clique em carta já virada ou já pareada
-      if (!card || card.state !== 'hidden') return prev;
-      return prev.map(c => c.id === cardId ? { ...c, state: 'flipped' } : c);
-    });
-
-    setFlippedIds(prev => {
-      const next = [...prev, cardId];
-
-      // Primeira carta — só registra e aguarda a segunda
-      if (next.length === 1) {
-        setPhase('playing');
-        return next;
-      }
-
-      // Segunda carta — hora de verificar o par
-      if (next.length === 2) {
-        setPhase('checking');
-        setStats(s => ({ ...s, moves: s.moves + 1 }));
-
-        // Programar verificação após 800ms (tempo para criança ver as duas cartas)
-        checkTimerRef.current = setTimeout(() => {
-          setCards(current => {
-            const [firstId, secondId] = next;
-            const first  = current.find(c => c.id === firstId)!;
-            const second = current.find(c => c.id === secondId)!;
-
-            const isMatch = first.pairId === second.pairId;
-
-            if (isMatch) {
-              // Marca ambas como 'matched' — ficam visíveis para sempre
-              const updated = current.map(c =>
-                c.id === firstId || c.id === secondId
-                  ? { ...c, state: 'matched' as const }
-                  : c,
-              );
-
-              // Verifica se completou o jogo
-              const matchesFound = updated.filter(c => c.state === 'matched').length / 2;
-              setStats(s => ({
-                ...s,
-                matchesFound,
-                completedAt: matchesFound === config.pairs ? Date.now() : undefined,
-              }));
-
-              if (matchesFound === config.pairs) {
-                setPhase('completed');
-              } else {
-                setPhase('playing');
-              }
-
-              return updated;
-            } else {
-              // Não é par — esconde as duas cartas
-              setPhase('playing');
-              return current.map(c =>
-                c.id === firstId || c.id === secondId
-                  ? { ...c, state: 'hidden' as const }
-                  : c,
-              );
-            }
-          });
-
-          setFlippedIds([]);
-        }, 800);
-
-        return next;
-      }
-
-      return prev;
-    });
-  }, [phase, config.pairs]);
 
   // ─── Valores derivados (computados, não armazenados) ──────────────────────
   const isCompleted = phase === 'completed';
-  const elapsedSeconds = isCompleted && stats.completedAt
+  const elapsedSeconds = isCompleted && stats.startedAt && stats.completedAt
     ? Math.floor((stats.completedAt - stats.startedAt) / 1000)
     : 0;
 

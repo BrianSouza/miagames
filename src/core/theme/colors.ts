@@ -4,8 +4,8 @@
  */
 export const Colors = {
   // Primárias — usadas em botões, cabeçalhos e elementos de destaque
-  primary: '#FF6B6B',       // vermelho-coral vibrante
-  primaryDark: '#E05555',
+  primary: '#E05555',       // vermelho-coral — contraste ≥ 3:1 com texto branco grande
+  primaryDark: '#C94545',
   secondary: '#4ECDC4',     // turquesa
   secondaryDark: '#3AB5AC',
   accent: '#FFE66D',        // amarelo-limão
@@ -37,16 +37,17 @@ export const Colors = {
   overlay: 'rgba(0, 0, 0, 0.5)',
   transparent: 'transparent',
 
-  // Paleta de cores para as letras/números nas cartas
+  // Paleta de cores para as letras/números nas cartas.
+  // Todas com contraste ≥ 4.5:1 sobre o branco da carta (WCAG AA).
   letterColors: [
-    '#FF6B6B', // vermelho
-    '#4ECDC4', // turquesa
-    '#FFE66D', // amarelo
-    '#6BCB77', // verde
-    '#845EC2', // roxo
-    '#FF9F43', // laranja
-    '#54A0FF', // azul
-    '#FF6B9D', // rosa
+    '#D32F2F', // vermelho
+    '#1565C0', // azul
+    '#2E7D32', // verde
+    '#6A1B9A', // roxo
+    '#B45309', // laranja queimado
+    '#00796B', // verde-azulado
+    '#C2185B', // rosa
+    '#283593', // anil
   ],
 } as const;
 

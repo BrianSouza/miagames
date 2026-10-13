@@ -1,0 +1,9 @@
+node_modules/
+.expo/
+dist/
+web-build/
+# Gerados por `expo prebuild` / `expo run:*`
+android/
+ios/
+*.log
+.DS_Store

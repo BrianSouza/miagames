@@ -1,2 +1,9 @@
 export { RootNavigator } from './RootNavigator';
-export type { RootStackParamList, NavigationProp, ScreenRouteProp } from './types';
+export type {
+  RootStackParamList,
+  NavigationProp,
+  ScreenRouteProp,
+  GameRoute,
+  GameRouteParams,
+  GameDifficulty,
+} from './types';

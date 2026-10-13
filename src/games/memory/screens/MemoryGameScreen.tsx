@@ -1,8 +1,10 @@
-import React from 'react';
-import { View, StyleSheet, SafeAreaView } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { Colors } from '../../../core/theme';
+import { speak, stopSpeaking } from '../../../core/audio';
 import type { NavigationProp, ScreenRouteProp } from '../../../core/navigation';
 import { useMemoryGame } from '../hooks';
 import { MemoryBoard, GameHeader, ResultModal } from '../components';
@@ -32,11 +34,32 @@ export function MemoryGameScreen() {
     phase,
     stats,
     config,
+    flippedIds,
     isCompleted,
     elapsedSeconds,
     flipCard,
     resetGame,
   } = useMemoryGame(difficulty);
+
+  // ─── Narração: fala o símbolo de cada carta virada ─────────────────────────
+  const lastFlippedId = flippedIds[flippedIds.length - 1];
+  const lastFlippedSymbol = cards.find(c => c.id === lastFlippedId)?.symbol;
+
+  useEffect(() => {
+    if (lastFlippedSymbol) speak(lastFlippedSymbol);
+  }, [lastFlippedId, lastFlippedSymbol]);
+
+  // ─── Narração: comemora cada par e o fim do jogo ───────────────────────────
+  useEffect(() => {
+    if (isCompleted) {
+      speak('Parabéns! Você encontrou todos os pares!');
+    } else if (stats.matchesFound > 0) {
+      speak('Muito bem!');
+    }
+  }, [stats.matchesFound, isCompleted]);
+
+  // Não deixa a voz falando depois de sair da tela
+  useEffect(() => stopSpeaking, []);
 
   function handleBack() {
     navigation.navigate('Home');

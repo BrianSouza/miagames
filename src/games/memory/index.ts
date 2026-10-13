@@ -1,4 +1,9 @@
 import type { GameModule } from '../../modules/types';
+import type { Difficulty } from './types';
+import { MemoryGameScreen } from './screens';
+import { DIFFICULTY_CONFIGS } from './hooks';
+
+const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
 
 /**
  * Definição do módulo Jogo da Memória.
@@ -16,7 +21,13 @@ export const memoryGameModule: GameModule = {
   icon: '🧠',
   accentColor: '#845EC2',
   route: 'MemoryGame',
-  defaultParams: { difficulty: 'easy' },
+  screen: MemoryGameScreen,
+  difficultyOptions: DIFFICULTIES.map(id => ({
+    id,
+    label: DIFFICULTY_CONFIGS[id].label,
+    emoji: DIFFICULTY_CONFIGS[id].emoji,
+    detail: `${DIFFICULTY_CONFIGS[id].pairs} pares de cartas`,
+  })),
   metadata: {
     ageRange: [3, 6],
     skills: ['memory', 'letters', 'numbers'],

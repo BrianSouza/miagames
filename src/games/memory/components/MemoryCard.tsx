@@ -10,6 +10,9 @@ import {
 import { Colors, BorderRadius, FontSize } from '../../../core/theme';
 import type { MemoryCard as MemoryCardType } from '../types';
 
+/** Margem de cada lado da carta — o Board usa para calcular o grid */
+export const CARD_MARGIN = 4;
+
 interface Props {
   card: MemoryCardType;
   size: number;               // tamanho do lado da carta em px (calculado pelo Board)
@@ -74,33 +77,31 @@ export function MemoryCard({ card, size, onPress, disabled }: Props) {
     }).start();
   }
 
-  const cardStyle = {
-    width: size,
-    height: size,
-    margin: 4,
-  };
-
-  // Carta 'matched' fica com brilho verde para indicar sucesso
-  const matchedOverlayOpacity = card.state === 'matched' ? 1 : 0;
+  const faceSize = { width: size, height: size };
+  const isDisabled = disabled || card.state !== 'hidden';
 
   return (
     <Pressable
-      onPress={() => !disabled && onPress(card.id)}
+      onPress={() => onPress(card.id)}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      disabled={disabled || card.state !== 'hidden'}
+      disabled={isDisabled}
       accessibilityLabel={`Carta ${isVisible ? card.symbol : 'escondida'}`}
       accessibilityRole="button"
+      accessibilityState={{ disabled: isDisabled }}
     >
-      <Animated.View style={[cardStyle, { transform: [{ scale: scaleAnim }] }]}>
+      <Animated.View
+        style={[faceSize, styles.container, { transform: [{ scale: scaleAnim }] }]}
+      >
 
         {/* ── VERSO (carta fechada) ───────────────────────── */}
         <Animated.View
           style={[
             styles.cardFace,
             styles.cardBack,
-            cardStyle,
-            { transform: [{ rotateY: backRotateY }] },
+            faceSize,
+            // perspective dá profundidade ao giro — sem ela o flip fica achatado
+            { transform: [{ perspective: 1000 }, { rotateY: backRotateY }] },
           ]}
         >
           <Text style={styles.cardBackEmoji}>🌟</Text>
@@ -111,8 +112,8 @@ export function MemoryCard({ card, size, onPress, disabled }: Props) {
           style={[
             styles.cardFace,
             styles.cardFront,
-            cardStyle,
-            { transform: [{ rotateY: frontRotateY }] },
+            faceSize,
+            { transform: [{ perspective: 1000 }, { rotateY: frontRotateY }] },
           ]}
         >
           <Text style={[styles.symbol, { color: card.color, fontSize: size * 0.45 }]}>
@@ -120,14 +121,7 @@ export function MemoryCard({ card, size, onPress, disabled }: Props) {
           </Text>
 
           {/* Overlay verde sutil quando pareada */}
-          {card.state === 'matched' && (
-            <View
-              style={[
-                styles.matchedOverlay,
-                { opacity: matchedOverlayOpacity },
-              ]}
-            />
-          )}
+          {card.state === 'matched' && <View style={styles.matchedOverlay} />}
         </Animated.View>
 
       </Animated.View>
@@ -136,6 +130,9 @@ export function MemoryCard({ card, size, onPress, disabled }: Props) {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    margin: CARD_MARGIN,
+  },
   cardFace: {
     position: 'absolute',
     alignItems: 'center',

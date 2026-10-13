@@ -1,12 +1,13 @@
 import type { ComponentType } from 'react';
-import type { RootStackParamList } from '../core/navigation/types';
+import type { GameRoute, GameDifficulty } from '../core/navigation/types';
 
 /**
  * Contrato que todo módulo de jogo deve implementar.
  *
  * GameModule é o "plugin interface" do sistema.
- * Cada jogo novo apenas precisa exportar um objeto que siga este contrato
- * e registrá-lo em gameRegistry.ts — nenhum outro arquivo precisa ser tocado.
+ * Cada jogo novo apenas precisa exportar um objeto que siga este contrato,
+ * registrá-lo em gameRegistry.ts e declarar a rota em RootStackParamList.
+ * Home e navegação se adaptam sozinhas.
  *
  * Analogia: é como um USB — o conector é padronizado,
  * o que você pluga pode ser qualquer coisa.
@@ -28,10 +29,16 @@ export interface GameModule {
   accentColor: string;
 
   /** Rota de navegação para este jogo (deve existir em RootStackParamList) */
-  route: keyof RootStackParamList;
+  route: GameRoute;
 
-  /** Parâmetros padrão para navegar para o jogo */
-  defaultParams?: RootStackParamList[keyof RootStackParamList];
+  /** Tela do jogo — registrada automaticamente no RootNavigator */
+  screen: ComponentType<any>;
+
+  /**
+   * Dificuldades oferecidas antes de abrir o jogo.
+   * Se ausente, a Home navega direto para o jogo.
+   */
+  difficultyOptions?: GameDifficultyOption[];
 
   /** Componente de thumbnail/preview (opcional, para telas de seleção ricas) */
   ThumbnailComponent?: ComponentType;
@@ -43,8 +50,16 @@ export interface GameModule {
   metadata: {
     ageRange: [number, number];     // ex: [3, 6]
     skills: GameSkill[];
-    difficulty: 'easy' | 'medium' | 'hard';
+    difficulty: GameDifficulty;
   };
+}
+
+export interface GameDifficultyOption {
+  id: GameDifficulty;
+  label: string;
+  emoji: string;
+  /** Texto curto exibido abaixo do nome (ex: "6 pares de cartas") */
+  detail: string;
 }
 
 export type GameSkill =

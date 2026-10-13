@@ -1,14 +1,7 @@
 {
-  "extends": "@react-native/typescript-config/tsconfig.json",
+  "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true,
-    "baseUrl": ".",
-    "paths": {
-      "@core/*": ["src/core/*"],
-      "@games/*": ["src/games/*"],
-      "@modules/*": ["src/modules/*"],
-      "@assets/*": ["src/assets/*"]
-    }
+    "strict": true
   },
-  "include": ["src/**/*", "App.tsx", "index.js"]
+  "include": ["src/**/*", "App.tsx", "index.js", "jest.setup.js"]
 }

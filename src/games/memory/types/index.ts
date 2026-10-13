@@ -1,3 +1,5 @@
+import type { GameDifficulty } from '../../../core/navigation/types';
+
 /**
  * Tipos do Jogo da Memória.
  * Mantidos isolados em /types para que hooks e componentes
@@ -28,7 +30,7 @@ export interface MemoryCard {
   color: string;
 }
 
-export type Difficulty = 'easy' | 'medium' | 'hard';
+export type Difficulty = GameDifficulty;
 
 export interface DifficultyConfig {
   /** Total de PARES de cartas */
@@ -43,7 +45,7 @@ export interface GameStats {
   moves: number;
   matchesFound: number;
   totalPairs: number;
-  startedAt: number;         // timestamp
+  startedAt?: number;        // timestamp do primeiro toque — undefined antes de começar
   completedAt?: number;      // timestamp — undefined se não concluído
 }
 
