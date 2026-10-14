@@ -77,10 +77,12 @@ Pares de **letras e números**, para quem está na fase de alfabetização. Ao v
 carta, a voz fala o **nome** da letra ("Bê", "Cê") ou do número ("três"); ao achar o par, ela
 repete o nome e elogia. Há efeitos sonoros ao virar, acertar, errar e vencer.
 
-- Cada partida mistura cerca de 60% de letras (A–Z) e 40% de números (0–9)
+- Cada partida mistura cerca de 60% de letras (A–Z) e 40% de números
+- O alcance dos números cresce com a dificuldade: **fácil de 0 a 9, médio de 0 a 20 e difícil de 0 a 50**.
+  Os números são falados por extenso ("Trinta e sete"); o seletor de dificuldade mostra o alcance de cada nível
 - Letras em azul e números em rosa; todas as letras têm a mesma cor, então a cor não entrega o par
-- **Nunca aparecem juntos símbolos parecidos** ("O" com "0", "I" com "1"): o erro não seria de
-  memória, e sim de uma distinção que a criança ainda não domina
+- **Nunca aparecem juntos símbolos que se confundem**: "O" com "0", "I" com "1" e números com os
+  algarismos invertidos (12 com 21): o erro não seria de memória, e sim de uma distinção que a criança ainda não domina
 - Fonte **Andika**, desenhada para quem está aprendendo a ler: o "I" tem serifas e não se confunde com o "1" nem com o "L"
 - A voz usa o nome da letra em português, e não o que o motor de voz leria sozinho (que leria "E" como a palavra "e")
 

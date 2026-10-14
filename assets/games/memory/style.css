@@ -169,6 +169,9 @@ html, body {
   line-height: 1;
   pointer-events: none;
 }
+/* Números de dois algarismos (10 a 50): menores, para caberem na carta */
+.glyph[data-len="2"] { font-size: calc(var(--card-size) * 0.46); }
+
 /* Letras e números têm cores diferentes (as duas com contraste ≥ 4.5:1 sobre o
    branco), mas todas as letras compartilham a cor: a cor não entrega o par */
 .card-back[data-kind="letter"] { color: #1565C0; }

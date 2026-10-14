@@ -15,6 +15,12 @@ final List<GameModule> gameRegistry = [
       GameDifficulty.hard,
     ],
     assetPath: 'assets/games/memory/index.html',
+    // Mantenha em sincronia com `maxNumber` em memory-logic.js
+    difficultyHints: {
+      GameDifficulty.easy: 'Letras e números até 9',
+      GameDifficulty.medium: 'Letras e números até 20',
+      GameDifficulty.hard: 'Letras e números até 50',
+    },
   ),
   // Próximos jogos:
   // GameModule(id: 'number-puzzle', displayName: 'Quebra-Cabeça', ...)

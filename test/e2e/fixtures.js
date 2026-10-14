@@ -17,6 +17,22 @@ const GAME_URL = pathToFileURL(
 /** Tempo que o jogo espera antes de verificar as duas cartas (CHECK_DELAY_MS) */
 const CHECK_DELAY_MS = 800;
 
+/**
+ * Gerador pseudoaleatório com semente (mulberry32). O mesmo código roda na página
+ * (substituindo Math.random) e no Node, então um teste pode escolher uma semente
+ * que produz o tabuleiro que quer verificar.
+ */
+function prng(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 class MemoryGame {
   constructor(page, problems) {
     this.page = page;
@@ -24,8 +40,14 @@ class MemoryGame {
   }
 
   /** Abre o jogo e envia o INIT, como o Flutter faz quando a página carrega. */
-  async open({ difficulty = 'easy', sound = true, best = null } = {}) {
+  async open({ difficulty = 'easy', sound = true, best = null, seed = null } = {}) {
     await this.page.clock.install({ time: new Date('2030-01-01T00:00:00Z') });
+    if (seed !== null) {
+      // Tabuleiro previsível: o sorteio da página usa o mesmo gerador que o Node
+      await this.page.addInitScript({
+        content: `Math.random = (${prng.toString()})(${Number(seed)});`,
+      });
+    }
     await this.page.addInitScript(() => {
       window.__messages = [];
       window.__notes = 0;
@@ -126,4 +148,4 @@ const test = base.extend({
   },
 });
 
-module.exports = { test, expect, CHECK_DELAY_MS };
+module.exports = { test, expect, CHECK_DELAY_MS, prng };

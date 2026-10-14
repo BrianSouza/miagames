@@ -17,13 +17,15 @@
 })(this, function () {
   'use strict';
 
+  // maxNumber: os números sorteados vão de 0 até este valor. No fácil, só
+  // algarismos soltos; nos níveis seguintes entram os números de dois algarismos.
   var DIFFICULTY = {
-    easy:   { pairs: 6,  cols: 3 },
-    medium: { pairs: 8,  cols: 4 },
-    hard:   { pairs: 10, cols: 4 },
+    easy:   { pairs: 6,  cols: 3, maxNumber: 9 },
+    medium: { pairs: 8,  cols: 4, maxNumber: 20 },
+    hard:   { pairs: 10, cols: 4, maxNumber: 50 },
   };
 
-  // Letras (A–Z) e números (0–9). `name` é o que a voz fala: o NOME da letra em
+  // Letras (A–Z) e números (0 até o máximo da dificuldade). `name` é o que a voz fala: o NOME da letra em
   // português ("Bê", "Cê"...), e não o som que o motor de voz leria sozinho —
   // sozinho, ele lê "E" como a palavra "e" ("i") e "Q" como "cu".
   var LETTERS = [
@@ -35,10 +37,31 @@
     ['Z', 'Zê'],
   ].map(function (l) { return { symbol: l[0], name: l[1], kind: 'letter' }; });
 
-  var NUMBERS = [
-    ['0', 'Zero'],  ['1', 'Um'],    ['2', 'Dois'],  ['3', 'Três'],  ['4', 'Quatro'],
-    ['5', 'Cinco'], ['6', 'Seis'],  ['7', 'Sete'],  ['8', 'Oito'],  ['9', 'Nove'],
-  ].map(function (n) { return { symbol: n[0], name: n[1], kind: 'number' }; });
+  var UNITS = ['zero', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove'];
+  var TEENS = ['dez', 'onze', 'doze', 'treze', 'catorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
+  var TENS = { 2: 'vinte', 3: 'trinta', 4: 'quarenta', 5: 'cinquenta' };
+
+  /** Nome do número por extenso, até 59: 7 → "Sete", 37 → "Trinta e sete" */
+  function numberName(n) {
+    var text;
+    if (n < 10) text = UNITS[n];
+    else if (n < 20) text = TEENS[n - 10];
+    else {
+      var tens = Math.floor(n / 10);
+      var unit = n % 10;
+      text = TENS[tens] + (unit ? ' e ' + UNITS[unit] : '');
+    }
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
+  /** Cartas de número de 0 até `max` */
+  function numbersUpTo(max) {
+    var list = [];
+    for (var n = 0; n <= max; n++) {
+      list.push({ symbol: String(n), name: numberName(n), kind: 'number' });
+    }
+    return list;
+  }
 
   /**
    * Símbolos que se parecem: nunca aparecem no mesmo tabuleiro. Para quem está
@@ -47,8 +70,27 @@
    */
   var LOOKALIKES = { 'O': '0', '0': 'O', 'I': '1', '1': 'I' };
 
+  /**
+   * Dois símbolos que a criança costuma trocar: os que se parecem (O/0, I/1) e os
+   * números com os algarismos invertidos (12 e 21, 13 e 31) — erro comum de quem
+   * ainda está aprendendo a ordem dos algarismos.
+   */
+  function looksAlike(a, b) {
+    if (LOOKALIKES[a] === b) return true;
+    return a.length === 2 && b.length === 2 && a !== b && a.charAt(0) === b.charAt(1) && a.charAt(1) === b.charAt(0);
+  }
+
   /** Fração de pares que são números; o resto são letras (foco na alfabetização) */
   var NUMBER_SHARE = 0.4;
+
+  /** A letra ou o número de um símbolo ("B", "37") — para quem só tem o texto da carta */
+  function findSymbol(symbol) {
+    for (var i = 0; i < LETTERS.length; i++) {
+      if (LETTERS[i].symbol === symbol) return LETTERS[i];
+    }
+    var n = Number(symbol);
+    return n >= 0 && String(n) === symbol ? numbersUpTo(n).pop() : null;
+  }
 
   /** Rótulo para leitores de tela: "Letra B", "Número 3" */
   function labelFor(item) {
@@ -75,17 +117,22 @@
 
   /**
    * Escolhe os símbolos de uma partida: uma mistura de letras e números (cerca de
-   * 60% letras), sem repetir símbolo e sem juntar símbolos parecidos.
+   * 60% letras), sem repetir símbolo e sem juntar símbolos que se confundem.
+   * Os números vão de 0 até `maxNumber`.
    */
-  function pickSymbols(pairs, random) {
+  function pickSymbols(pairs, random, maxNumber) {
     var numberCount = Math.round(pairs * NUMBER_SHARE);
     var letters = shuffle(LETTERS, random).slice(0, pairs - numberCount);
-    var taken = {};
-    letters.forEach(function (l) { taken[l.symbol] = true; });
 
-    var numbers = shuffle(NUMBERS, random)
-      .filter(function (n) { return !taken[LOOKALIKES[n.symbol]]; })
-      .slice(0, numberCount);
+    var chosen = letters.slice();
+    var numbers = [];
+    shuffle(numbersUpTo(maxNumber === undefined ? 9 : maxNumber), random).forEach(function (n) {
+      if (numbers.length >= numberCount) return;
+      var confusable = chosen.some(function (c) { return looksAlike(c.symbol, n.symbol); });
+      if (confusable) return;
+      numbers.push(n);
+      chosen.push(n);
+    });
 
     return letters.concat(numbers);
   }
@@ -100,7 +147,7 @@
     var cfg = DIFFICULTY[key];
 
     var cards = [];
-    pickSymbols(cfg.pairs, opts.random).forEach(function (item, pairId) {
+    pickSymbols(cfg.pairs, opts.random, cfg.maxNumber).forEach(function (item, pairId) {
       [0, 1].forEach(function (copy) {
         cards.push({
           id: pairId * 2 + copy,
@@ -237,7 +284,10 @@
   return {
     DIFFICULTY: DIFFICULTY,
     LETTERS: LETTERS,
-    NUMBERS: NUMBERS,
+    numbersUpTo: numbersUpTo,
+    numberName: numberName,
+    looksAlike: looksAlike,
+    findSymbol: findSymbol,
     LOOKALIKES: LOOKALIKES,
     pickSymbols: pickSymbols,
     CHECK_DELAY_MS: CHECK_DELAY_MS,

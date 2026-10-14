@@ -34,6 +34,10 @@ class GameModule {
   final List<String> skills;
   final List<GameDifficulty> difficulties;
 
+  /// O que cada nível traz neste jogo (ex.: "Números até 50"). Se um nível não
+  /// tiver texto aqui, o seletor mostra a descrição genérica da dificuldade.
+  final Map<GameDifficulty, String> difficultyHints;
+
   // Path to the game's index.html inside Flutter assets.
   final String assetPath;
 
@@ -46,5 +50,9 @@ class GameModule {
     required this.skills,
     required this.difficulties,
     required this.assetPath,
+    this.difficultyHints = const {},
   });
+
+  String hintFor(GameDifficulty difficulty) =>
+      difficultyHints[difficulty] ?? difficulty.description;
 }

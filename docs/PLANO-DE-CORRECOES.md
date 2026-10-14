@@ -61,6 +61,7 @@ Legenda: ✅ feito · ⏭️ fica para depois
 | 4.10 | Compras no app | Ainda não existem. Quando existirem, devem passar pelo mesmo bloqueio | ⏭️ |
 | 4.11 | Ícone do app (launcher) próprio | Usar `flutter_launcher_icons` com uma arte final | ⏭️ |
 | 4.12 | O jogo usava emoji de animais; a criança está em fase de **alfabetização** e o jogo precisa ensinar letras e números | Jogo da Memória com **letras (A–Z) e números (0–9)**: ~60% letras, ~40% números. A voz fala o **nome** da letra em português. Fonte **Andika**, própria para quem aprende a ler. Nunca juntam "O"/"0" nem "I"/"1" no mesmo tabuleiro | ✅ |
+| 4.15 | A dificuldade só mudava o número de cartas; a criança precisa avançar nos números | O alcance dos números cresce com o nível: **fácil 0–9, médio 0–20, difícil 0–50**, falados por extenso ("Trinta e sete"). Números de dois algarismos têm fonte menor para caberem na carta. Não juntam números com algarismos invertidos (12 e 21). O seletor mostra o alcance de cada nível | ✅ |
 | 4.13 | Casar maiúscula com minúscula ("A" com "a"), como a escola ensina | Modo extra do Jogo da Memória, com cartas de pares diferentes | ⏭️ |
 | 4.14 | Jogos só de letras ou só de números, e escolher o conjunto de letras (ex.: só as do nome) | Seletor de conteúdo antes da partida | ⏭️ |
 

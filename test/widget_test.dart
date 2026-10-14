@@ -56,6 +56,11 @@ void main() {
       findsNothing,
       reason: 'nenhum recorde ainda',
     );
+
+    // O que cada nível traz: números maiores a cada nível, até 50
+    expect(find.text('Letras e números até 9'), findsOneWidget);
+    expect(find.text('Letras e números até 20'), findsOneWidget);
+    expect(find.text('Letras e números até 50'), findsOneWidget);
   });
 
   testWidgets('o seletor mostra o recorde de cada dificuldade', (tester) async {

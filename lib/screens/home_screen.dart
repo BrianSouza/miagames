@@ -319,7 +319,7 @@ class _DifficultySheet extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      diff.description,
+                      game.hintFor(diff),
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: AppColors.textSecond,
                       ),

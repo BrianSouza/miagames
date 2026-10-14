@@ -100,7 +100,8 @@
         '<div class="card-inner">' +
           '<div class="card-front" aria-hidden="true">?</div>' +
           '<div class="card-back" data-kind="' + card.kind + '" aria-hidden="true">' +
-            '<span class="glyph" data-symbol="' + card.symbol + '">' + card.symbol + '</span>' +
+            '<span class="glyph" data-symbol="' + card.symbol + '" data-len="' + card.symbol.length + '">' +
+              card.symbol + '</span>' +
           '</div>' +
         '</div>';
       el.addEventListener('click', function () { onCardClick(card.id); });

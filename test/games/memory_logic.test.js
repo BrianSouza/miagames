@@ -40,7 +40,7 @@ describe('createGame', () => {
         assert.equal(pair.length, 2);
         assert.equal(pair[0].symbol, pair[1].symbol);
         assert.ok(pair[0].name, 'cada carta tem o nome falado');
-        assert.match(pair[0].label, /^(Letra [A-Z]|Número \d)$/);
+        assert.match(pair[0].label, /^(Letra [A-Z]|Número \d{1,2})$/);
       }
     });
   }
@@ -50,13 +50,74 @@ describe('createGame', () => {
       const state = Logic.createGame(difficulty);
       const symbols = [...new Set(state.cards.map(c => c.symbol))];
       assert.equal(symbols.filter(x => /[A-Z]/.test(x)).length, letters, `${difficulty}: letras`);
-      assert.equal(symbols.filter(x => /\d/.test(x)).length, numbers, `${difficulty}: números`);
+      assert.equal(symbols.filter(x => /^\d+$/.test(x)).length, numbers, `${difficulty}: números`);
     }
+  });
+
+  describe('alcance dos números por dificuldade', () => {
+    const numbersIn = (difficulty) =>
+      Logic.createGame(difficulty).cards.filter(c => c.kind === 'number').map(c => Number(c.symbol));
+
+    test('fácil só tem algarismos soltos (até 9)', () => {
+      for (let i = 0; i < 1000; i++) {
+        for (const n of numbersIn('easy')) assert.ok(n >= 0 && n <= 9, `fácil sorteou ${n}`);
+      }
+    });
+
+    test('médio vai até 20 e já tem números de dois algarismos', () => {
+      const seen = new Set();
+      for (let i = 0; i < 3000; i++) {
+        for (const n of numbersIn('medium')) {
+          assert.ok(n >= 0 && n <= 20, `médio sorteou ${n}`);
+          seen.add(n);
+        }
+      }
+      assert.ok([...seen].some(n => n >= 10), 'médio nunca sorteou um número de dois algarismos');
+      assert.ok(seen.has(20), 'médio nunca chegou ao 20');
+    });
+
+    test('difícil vai até 50 e chega a 50', () => {
+      const seen = new Set();
+      for (let i = 0; i < 5000; i++) {
+        for (const n of numbersIn('hard')) {
+          assert.ok(n >= 0 && n <= 50, `difícil sorteou ${n}`);
+          seen.add(n);
+        }
+      }
+      assert.ok(seen.has(50), 'difícil nunca sorteou o 50');
+      assert.ok([...seen].some(n => n > 20), 'difícil nunca passou do 20');
+    });
+
+    test('o número de pares e a mistura de letras e números não mudam com o alcance', () => {
+      assert.equal(numbersIn('hard').length, 4 * 2);
+      assert.equal(numbersIn('medium').length, 3 * 2);
+      assert.equal(numbersIn('easy').length, 2 * 2);
+    });
+  });
+
+  test('não junta números com os algarismos invertidos (12 e 21)', () => {
+    for (let i = 0; i < 3000; i++) {
+      const numbers = [...new Set(Logic.createGame('hard').cards.filter(c => c.kind === 'number').map(c => c.symbol))];
+      for (const a of numbers) {
+        for (const b of numbers) {
+          assert.ok(!Logic.looksAlike(a, b), `${a} e ${b} juntos`);
+        }
+      }
+    }
+  });
+
+  test('looksAlike: O/0, I/1 e algarismos invertidos', () => {
+    assert.ok(Logic.looksAlike('O', '0') && Logic.looksAlike('0', 'O'));
+    assert.ok(Logic.looksAlike('I', '1') && Logic.looksAlike('1', 'I'));
+    assert.ok(Logic.looksAlike('12', '21') && Logic.looksAlike('31', '13'));
+    assert.ok(!Logic.looksAlike('11', '11'), 'o mesmo número não é parecido com ele mesmo');
+    assert.ok(!Logic.looksAlike('12', '13'));
+    assert.ok(!Logic.looksAlike('A', 'B'));
   });
 
   test('o tipo de cada carta bate com o símbolo', () => {
     for (const card of Logic.createGame('hard').cards) {
-      assert.equal(card.kind, /[A-Z]/.test(card.symbol) ? 'letter' : 'number');
+      assert.equal(card.kind, /^[A-Z]$/.test(card.symbol) ? 'letter' : 'number');
     }
   });
 
@@ -91,15 +152,15 @@ describe('createGame', () => {
 describe('símbolos e nomes falados', () => {
   test('26 letras e 10 números, sem repetição', () => {
     assert.equal(Logic.LETTERS.length, 26);
-    assert.equal(Logic.NUMBERS.length, 10);
+    assert.equal(Logic.numbersUpTo(9).length, 10);
     assert.deepEqual(Logic.LETTERS.map(l => l.symbol).join(''), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ');
-    assert.deepEqual(Logic.NUMBERS.map(n => n.symbol).join(''), '0123456789');
+    assert.deepEqual(Logic.numbersUpTo(9).map(n => n.symbol).join(''), '0123456789');
   });
 
   test('toda letra e número tem um nome falado em português', () => {
-    for (const item of [...Logic.LETTERS, ...Logic.NUMBERS]) {
+    for (const item of [...Logic.LETTERS, ...Logic.numbersUpTo(50)]) {
       assert.ok(item.name && item.name.length > 0, item.symbol);
-      assert.match(item.name, /^[A-ZÁÉÍÓÚÂÊÔ][a-záéíóúâêôãõç]*$/, `nome de ${item.symbol}`);
+      assert.match(item.name, /^[A-ZÁÉÍÓÚÂÊÔ][a-záéíóúâêôãõç]*( e [a-záéíóúâêôãõç]+)?$/, `nome de ${item.symbol}`);
     }
   });
 
@@ -113,8 +174,30 @@ describe('símbolos e nomes falados', () => {
   });
 
   test('números falam por extenso', () => {
-    assert.deepEqual(Logic.NUMBERS.map(n => n.name),
+    assert.deepEqual(Logic.numbersUpTo(9).map(n => n.name),
       ['Zero', 'Um', 'Dois', 'Três', 'Quatro', 'Cinco', 'Seis', 'Sete', 'Oito', 'Nove']);
+  });
+
+  test('números de 10 a 50 são falados por extenso, em português do Brasil', () => {
+    const expected = {
+      10: 'Dez', 11: 'Onze', 12: 'Doze', 13: 'Treze', 14: 'Catorze', 15: 'Quinze',
+      16: 'Dezesseis', 17: 'Dezessete', 18: 'Dezoito', 19: 'Dezenove',
+      20: 'Vinte', 21: 'Vinte e um', 22: 'Vinte e dois', 29: 'Vinte e nove',
+      30: 'Trinta', 33: 'Trinta e três', 37: 'Trinta e sete',
+      40: 'Quarenta', 44: 'Quarenta e quatro', 45: 'Quarenta e cinco',
+      50: 'Cinquenta',
+    };
+    for (const [n, name] of Object.entries(expected)) {
+      assert.equal(Logic.numberName(Number(n)), name, `nome de ${n}`);
+    }
+  });
+
+  test('findSymbol acha letras e números de qualquer tamanho', () => {
+    assert.equal(Logic.findSymbol('B').name, 'Bê');
+    assert.equal(Logic.findSymbol('7').name, 'Sete');
+    assert.equal(Logic.findSymbol('37').name, 'Trinta e sete');
+    assert.equal(Logic.findSymbol('037'), null);
+    assert.equal(Logic.findSymbol('?'), null);
   });
 
   test('as letras e números de um jogo pequeno nunca se repetem', () => {

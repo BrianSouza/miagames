@@ -69,7 +69,7 @@ test.describe('partida', () => {
   test('virar uma carta fala o nome da letra ou do número e atualiza o rótulo', async ({ game }) => {
     await game.open();
     const [symbol] = await game.symbols();
-    const item = [...Logic.LETTERS, ...Logic.NUMBERS].find((i) => i.symbol === symbol);
+    const item = Logic.findSymbol(symbol);
 
     await game.cards().first().click();
 
@@ -89,7 +89,7 @@ test.describe('partida', () => {
     await game.cards().nth(first).click();
 
     const [spoken] = await game.spoken();
-    const expected = [...Logic.LETTERS, ...Logic.NUMBERS].find((i) => i.symbol === symbols[first]).name;
+    const expected = Logic.findSymbol(symbols[first]).name;
     expect(spoken).toBe(expected);
   });
 
@@ -106,7 +106,7 @@ test.describe('partida', () => {
     await expect(game.page.locator('.card.matched')).toHaveCount(2);
     await expect(game.page.locator('#matches')).toHaveText('1/6');
     const symbol = (await game.symbols())[c];
-    const item = [...Logic.LETTERS, ...Logic.NUMBERS].find((i) => i.symbol === symbol);
+    const item = Logic.findSymbol(symbol);
     expect(await game.spoken()).toContain(`${item.name}! Muito bem!`);
   });
 
