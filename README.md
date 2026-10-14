@@ -115,7 +115,14 @@ Os mesmos comandos, além de um build Android, rodam no CI a cada PR.
 
 ### Testar num aparelho Android sem instalar o Flutter
 
-Todo PR gera um APK de teste no CI:
+**Versão mais recente do `main`** (sem prazo de validade, sem login no GitHub se o repositório for público):
+`https://github.com/BrianSouza/miagames/releases/latest/download/miagames.apk`
+
+A cada merge no `main`, o workflow `release.yml` gera o APK e atualiza a release `latest`.
+O APK é assinado com a chave de debug, que muda a cada build: para instalar uma versão
+nova, **desinstale a anterior primeiro** (o progresso salvo no app é apagado).
+
+**Código de um PR ainda não mergeado:** todo PR gera um APK de teste no CI:
 
 1. Abra o PR no GitHub, aba **Checks** (ou **Actions**) e entre na execução mais recente
 2. Em **Artifacts**, baixe `miagames-debug-apk` (um `.zip` com o `app-debug.apk`)
