@@ -12,21 +12,13 @@
   // ── Estado ────────────────────────────────────────────────────────────────────
   var state = null;
   var checkTimer = null;    // verificação agendada das duas cartas abertas
-  var clockTimer = null;    // atualiza o cronômetro na tela
   var best = null;          // recorde salvo pelo Flutter: { stars, moves } ou null
 
   // ── DOM refs ──────────────────────────────────────────────────────────────────
   var boardContainerEl = document.getElementById('board-container');
   var boardEl          = document.getElementById('board');
   var matchesEl        = document.getElementById('matches');
-  var timerEl          = document.getElementById('timer');
   var movesEl          = document.getElementById('moves');
-  var hintEl           = document.getElementById('exit-hint');
-  var resultModal      = document.getElementById('result-modal');
-  var starsEl          = document.getElementById('stars');
-  var recordEl         = document.getElementById('new-record');
-  var resultStatsEl    = document.getElementById('result-stats');
-  var backBtn          = document.getElementById('btn-back');
 
   // ── Ponte com o Flutter ───────────────────────────────────────────────────────
   // INIT: {"type":"INIT","difficulty":"easy","gameId":"memory","sound":true,
@@ -39,14 +31,11 @@
 
   var speak = Bridge.speak;
 
-  // ── Helpers ───────────────────────────────────────────────────────────────────
-  function fmtTime(ms) {
-    var s = Math.floor(ms / 1000);
-    var m = Math.floor(s / 60).toString().padStart(2, '0');
-    var sec = (s % 60).toString().padStart(2, '0');
-    return m + ':' + sec;
-  }
+  var header = window.GameKit.createHeader({ onReset: resetGame });
+  var GameResult = window.GameResult;
+  GameResult.init({ onAgain: resetGame, onHome: Bridge.back });
 
+  // ── Helpers ───────────────────────────────────────────────────────────────────
   function findCard(id) {
     return state.cards.find(function (c) { return c.id === id; });
   }
@@ -54,7 +43,6 @@
   // ── Ciclo de vida ─────────────────────────────────────────────────────────────
   function startGame(difficulty) {
     clearTimeout(checkTimer);   // uma verificação pendente não pode atingir o jogo novo
-    clearInterval(clockTimer);
     checkTimer = null;
 
     var previousRound = state ? state.round : 0;
@@ -62,11 +50,11 @@
       previousRound: previousRound,
     });
 
-    resultModal.classList.add('hidden');
+    GameResult.hide();
+    header.setTotal(state.totalPairs);
     renderBoard();
     layoutBoard();
     updateStats();
-    timerEl.textContent = fmtTime(0);
   }
 
   function resetGame() {
@@ -120,9 +108,19 @@
     boardEl.style.setProperty('--card-size', size + 'px');
   }
 
+  // O que a criança vê são as estrelas; os números ficam para os leitores de tela
   function updateStats() {
     matchesEl.textContent = state.matches + '/' + state.totalPairs;
     movesEl.textContent = state.moves + (state.moves === 1 ? ' jogada' : ' jogadas');
+    header.setDone(state.matches);
+  }
+
+  /** Animação curta numa carta (pop ao acertar, shake ao errar) */
+  function animateCard(id, className) {
+    var el = boardEl.querySelector('[data-id="' + id + '"]');
+    if (!el) return;
+    el.classList.add(className);
+    setTimeout(function () { el.classList.remove(className); }, 450);
   }
 
   // ── Jogadas ───────────────────────────────────────────────────────────────────
@@ -130,15 +128,10 @@
     var next = Logic.flip(state, id, Date.now());
     if (next === state) return;   // toque ignorado
 
-    var startedNow = state.startedAt === null;
     state = next;
     refreshCard(id);
     Sounds.play('flip');
     speak(findCard(id).name);
-
-    if (startedNow) {
-      clockTimer = setInterval(tickClock, 1000);
-    }
 
     if (state.phase === 'checking') {
       updateStats();
@@ -157,7 +150,13 @@
     pending.forEach(refreshCard);
     updateStats();
 
-    if (outcome.result === 'mismatch') Sounds.play('mismatch');
+    if (outcome.result === 'mismatch') {
+      Sounds.play('mismatch');
+      pending.forEach(function (id) { animateCard(id, 'shake'); });
+    }
+    if (outcome.result === 'match' || outcome.result === 'complete') {
+      pending.forEach(function (id) { animateCard(id, 'pop'); });
+    }
     if (outcome.result === 'match') {
       Sounds.play('match');
       // Repete o nome do par encontrado: reforça a letra/número aprendido
@@ -167,18 +166,11 @@
   }
 
   function endGame() {
-    clearInterval(clockTimer);
-
     var elapsed = Logic.elapsedMs(state, Date.now());
     var stars = Logic.calcStars(state);
     var newRecord = Logic.isNewRecord(best, stars, state.moves);
 
-    timerEl.textContent = fmtTime(elapsed);
-    renderStars(stars);
-    starsEl.setAttribute('aria-label', stars + (stars === 1 ? ' estrela' : ' estrelas'));
-    recordEl.classList.toggle('hidden', !newRecord);
-    resultStatsEl.textContent = state.moves + ' jogadas · ' + fmtTime(elapsed);
-    resultModal.classList.remove('hidden');
+    GameResult.show(stars, newRecord);
     Sounds.play('win');
     speak(newRecord
       ? 'Parabéns! Novo recorde!'
@@ -197,26 +189,7 @@
     });
   }
 
-  /** 3 estrelas desenhadas: as conquistadas em amarelo, as demais em cinza */
-  function renderStars(count) {
-    var path = 'M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 20.9l1.6-7L2 9.2l7.1-.6z';
-    starsEl.innerHTML = [0, 1, 2].map(function (i) {
-      return '<svg viewBox="0 0 24 24" aria-hidden="true" class="star' +
-        (i < count ? ' earned' : '') + '"><path d="' + path + '"/></svg>';
-    }).join('');
-  }
-
-  function tickClock() {
-    timerEl.textContent = fmtTime(Logic.elapsedMs(state, Date.now()));
-  }
-
-  // ── Voltar: segurar para sair ─────────────────────────────────────────────────
-  window.HoldExit.attach(backBtn, hintEl, Bridge.back);
-
-  // ── Demais botões ─────────────────────────────────────────────────────────────
-  document.getElementById('btn-reset').addEventListener('click', resetGame);
-  document.getElementById('btn-play-again').addEventListener('click', resetGame);
-  document.getElementById('btn-home').addEventListener('click', Bridge.back);
+  // ── Botões ────────────────────────────────────────────────────────────────────
   window.addEventListener('resize', layoutBoard);
 
 })();

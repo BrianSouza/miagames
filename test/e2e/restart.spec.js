@@ -57,19 +57,21 @@ test.describe('reiniciar durante a verificação', () => {
     await game.solve();
 
     await expect(game.page.locator('#result-modal')).toBeVisible();
-    await expect(game.page.locator('#result-stats')).toContainText('6 jogadas');
+    const complete = (await game.messages()).filter((m) => m.type === 'GAME_COMPLETE');
+    expect(complete).toHaveLength(1);
+    expect(complete[0].moves).toBe(6);
   });
 
-  test('reiniciar zera o cronômetro', async ({ game }) => {
+  test('reiniciar zera o tempo da partida', async ({ game }) => {
     await game.open();
     await game.cards().first().click();
     await game.tick(5000);
-    await expect(game.page.locator('#timer')).toHaveText('00:05');
 
     await game.page.click('#btn-reset');
+    await game.tick(10_000); // parado até o 1º toque da partida nova
+    await game.solve();
 
-    await expect(game.page.locator('#timer')).toHaveText('00:00');
-    await game.tick(10_000);
-    await expect(game.page.locator('#timer')).toHaveText('00:00'); // parado até o 1º toque
+    const complete = (await game.messages()).find((m) => m.type === 'GAME_COMPLETE');
+    expect(complete.timeSeconds).toBe(4); // e não 19
   });
 });

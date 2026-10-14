@@ -133,7 +133,6 @@ test.describe('partida', () => {
     await expect(game.page.locator('#result-modal')).toBeVisible();
     await expect(game.page.locator('.star.earned')).toHaveCount(3);
     await expect(game.page.locator('#stars')).toHaveAttribute('aria-label', '3 estrelas');
-    await expect(game.page.locator('#result-stats')).toContainText('6 jogadas');
 
     const complete = (await game.messages()).filter((m) => m.type === 'GAME_COMPLETE');
     expect(complete).toHaveLength(1);
@@ -164,14 +163,15 @@ test.describe('partida', () => {
   });
 });
 
-test.describe('cronômetro', () => {
+test.describe('tempo da partida', () => {
+  // O tempo não aparece para a criança, mas vai para a Área dos pais (GAME_COMPLETE)
   test('só começa no primeiro toque, não quando o tabuleiro aparece', async ({ game }) => {
     await game.open();
     await game.tick(60_000); // um minuto olhando o tabuleiro
 
-    await expect(game.page.locator('#timer')).toHaveText('00:00');
-
     await game.solve(); // 6 pares × 800 ms de verificação
-    await expect(game.page.locator('#result-stats')).toContainText('00:04');
+
+    const complete = (await game.messages()).find((m) => m.type === 'GAME_COMPLETE');
+    expect(complete.timeSeconds).toBe(4);
   });
 });
