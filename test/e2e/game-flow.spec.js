@@ -58,9 +58,10 @@ test.describe('partida', () => {
   test('as cartas viradas mostram o símbolo grande o bastante para ler', async ({ game }) => {
     await game.open({ difficulty: 'hard' });
 
+    // Números de dois algarismos têm fonte menor de propósito: mede um símbolo de 1 caractere
     const card = await game.cards().first().boundingBox();
     const fontSize = await game.page
-      .locator('.glyph')
+      .locator('.glyph[data-len="1"]')
       .first()
       .evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
     expect(fontSize).toBeGreaterThanOrEqual(card.width * 0.55);

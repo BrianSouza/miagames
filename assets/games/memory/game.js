@@ -5,16 +5,14 @@
   // As regras ficam em memory-logic.js (testado com `node --test`).
   var Logic = window.MemoryLogic;
   var Sounds = window.GameSounds;
+  var Bridge = window.GameBridge;
 
   var BOARD_GAP = 10;
-  var EXIT_HOLD_MS = 700;   // segurar o voltar por este tempo para sair
-  var HINT_MS = 2000;
 
   // ── Estado ────────────────────────────────────────────────────────────────────
   var state = null;
   var checkTimer = null;    // verificação agendada das duas cartas abertas
   var clockTimer = null;    // atualiza o cronômetro na tela
-  var hintTimer = null;
   var best = null;          // recorde salvo pelo Flutter: { stars, moves } ou null
 
   // ── DOM refs ──────────────────────────────────────────────────────────────────
@@ -31,28 +29,15 @@
   var backBtn          = document.getElementById('btn-back');
 
   // ── Ponte com o Flutter ───────────────────────────────────────────────────────
-  /**
-   * Chamado pelo Flutter quando a página termina de carregar:
-   *   window.handleFlutterMessage({"type":"INIT","difficulty":"easy","gameId":"memory",
-   *                                "sound":true,"best":{"stars":2,"moves":9}})
-   */
-  window.handleFlutterMessage = function (data) {
-    if (data && data.type === 'INIT') {
-      Sounds.setEnabled(data.sound !== false);
-      best = data.best || null;
-      startGame(data.difficulty);
-    }
-  };
+  // INIT: {"type":"INIT","difficulty":"easy","gameId":"memory","sound":true,
+  //        "best":{"stars":2,"moves":9}}
+  Bridge.onInit(function (data) {
+    Sounds.setEnabled(data.sound !== false);
+    best = data.best || null;
+    startGame(data.difficulty);
+  });
 
-  function sendToFlutter(type, payload) {
-    if (!window.MiaGamesFlutter) return;
-    window.MiaGamesFlutter.postMessage(JSON.stringify(Object.assign({ type: type }, payload)));
-  }
-
-  /** A voz do navegador não funciona na WebView do Android — quem fala é o Flutter */
-  function speak(text) {
-    sendToFlutter('SPEAK', { text: text });
-  }
+  var speak = Bridge.speak;
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
   function fmtTime(ms) {
@@ -202,7 +187,7 @@
     // O Flutter salva o recorde; aqui só atualizamos para o "Jogar novamente"
     if (!best || newRecord) best = { stars: stars, moves: state.moves };
 
-    sendToFlutter('GAME_COMPLETE', {
+    Bridge.complete({
       gameId:      'memory',
       difficulty:  state.difficulty,
       moves:       state.moves,
@@ -226,44 +211,12 @@
   }
 
   // ── Voltar: segurar para sair ─────────────────────────────────────────────────
-  // Crianças pequenas tocam em tudo; um toque acidental não deve encerrar a
-  // partida. Um toque curto só mostra a dica para o adulto.
-  var holdTimer = null;
-  var exited = false;
-
-  function showExitHint() {
-    hintEl.classList.remove('hidden');
-    clearTimeout(hintTimer);
-    hintTimer = setTimeout(function () { hintEl.classList.add('hidden'); }, HINT_MS);
-  }
-
-  function cancelHold() {
-    clearTimeout(holdTimer);
-    holdTimer = null;
-  }
-
-  backBtn.addEventListener('pointerdown', function () {
-    exited = false;
-    cancelHold();
-    holdTimer = setTimeout(function () {
-      exited = true;
-      sendToFlutter('NAVIGATE_BACK');
-    }, EXIT_HOLD_MS);
-  });
-  backBtn.addEventListener('pointerup', cancelHold);
-  backBtn.addEventListener('pointercancel', cancelHold);
-  backBtn.addEventListener('pointerleave', cancelHold);
-  backBtn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
-  backBtn.addEventListener('click', function () {
-    if (!exited) showExitHint();
-  });
+  window.HoldExit.attach(backBtn, hintEl, Bridge.back);
 
   // ── Demais botões ─────────────────────────────────────────────────────────────
   document.getElementById('btn-reset').addEventListener('click', resetGame);
   document.getElementById('btn-play-again').addEventListener('click', resetGame);
-  document.getElementById('btn-home').addEventListener('click', function () {
-    sendToFlutter('NAVIGATE_BACK');
-  });
+  document.getElementById('btn-home').addEventListener('click', Bridge.back);
   window.addEventListener('resize', layoutBoard);
 
 })();

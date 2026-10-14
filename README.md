@@ -33,13 +33,18 @@ miagames/
 │       ├── game_screen.dart       ← WebView + ponte com o jogo
 │       └── parents_screen.dart    ← Área dos pais
 ├── assets/images/                 ← Ícones dos jogos (SVG)
+├── assets/games/_shared/          ← Kit comum dos jogos (carregado por `../_shared/...`)
+│   ├── kit.css                    ← Reset, fonte e cores
+│   ├── bridge.js                  ← Ponte com o Flutter (INIT, voz, fim de jogo, voltar)
+│   ├── hold-exit.js               ← Segurar para sair
+│   ├── sounds.js                  ← Efeitos sonoros sintetizados (Web Audio)
+│   ├── symbols.js                 ← Letras, números por extenso e símbolos que se confundem (testado no Node)
+│   └── fonts/                     ← Andika (fonte para alfabetização, licença OFL)
 ├── assets/games/memory/           ← Jogo da Memória (mini-app web)
 │   ├── index.html
 │   ├── style.css
-│   ├── fonts/                     ← Andika (fonte para alfabetização, licença OFL)
 │   ├── memory-logic.js            ← Regras puras (testadas no Node)
-│   ├── sounds.js                  ← Efeitos sonoros sintetizados (Web Audio)
-│   └── game.js                    ← DOM, timers e ponte
+│   └── game.js                    ← DOM e timers
 ├── tool/generate_illustrations.py ← Gera os SVGs (python3, sem dependências)
 ├── test/
 │   ├── *_test.dart                ← Testes Flutter
@@ -64,7 +69,7 @@ mensagens malformadas, e a WebView só navega para os arquivos locais do jogo.
 ### Adicionar um novo jogo
 
 1. Criar `assets/games/<jogo>/` com `index.html`, que implementa `window.handleFlutterMessage` e usa as mensagens acima
-2. Declarar a pasta **e cada subpasta** em `flutter.assets` no `pubspec.yaml`, porque o Flutter não inclui subpastas sozinho
+2. Declarar a pasta **e cada subpasta** em `flutter.assets` no `pubspec.yaml`, porque o Flutter não inclui subpastas sozinho (`test/pubspec_assets_test.dart` confere)
 3. Adicionar um `GameModule` em `lib/modules/game_registry.dart`, com a ilustração em `iconAsset`
 
 A Home, o seletor de dificuldade e a tela de jogo funcionam automaticamente.
