@@ -1,0 +1,11 @@
+# Gera o splash nativo (fundo creme e a Mia):
+#   dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#FFF9F0"
+  image: assets/splash/splash_mia.png
+  android: true
+  ios: true
+  android_12:
+    color: "#FFF9F0"
+    image: assets/splash/splash_android12.png
+    icon_background_color: "#FFF9F0"

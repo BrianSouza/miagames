@@ -3,11 +3,18 @@
 Uso: python3 tool/generate_illustrations.py
 
 - assets/images/memory_game.svg  → ícone do jogo da memória na Home
+- assets/images/mia/*.svg        → a gatinha Mia em 4 poses (Flutter)
+- assets/games/_shared/img/*.svg → as mesmas poses para os jogos (web)
+- tool/brand/*.svg               → fontes do ícone do app e do splash (veja tool/render_brand.js)
 
 Tudo é desenhado com traços e formas (sem <text>): o flutter_svg não desenha
 texto, e assim o ícone não depende de nenhuma fonte.
 """
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from mia import POSES, head_svg, mono_svg
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 
@@ -43,3 +50,22 @@ path = os.path.join(ROOT, 'assets/images/memory_game.svg')
 with open(path, 'w') as f:
     f.write(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">{icon}</svg>\n')
 print('ícone do jogo gerado:', os.path.relpath(path, ROOT))
+
+
+# ── Mia, a gatinha mascote ───────────────────────────────────────────────────
+def write(rel, text):
+    full = os.path.join(ROOT, rel)
+    os.makedirs(os.path.dirname(full), exist_ok=True)
+    with open(full, 'w') as f:
+        f.write(text)
+    return rel
+
+
+for pose, svg in POSES.items():
+    write(f'assets/images/mia/mia_{pose}.svg', svg)
+    write(f'assets/games/_shared/img/mia_{pose}.svg', svg)
+print('Mia gerada:', ', '.join(POSES))
+
+write('tool/brand/mia_head.svg', head_svg())
+write('tool/brand/mia_mono.svg', mono_svg())
+print('fontes do ícone gerados em tool/brand/')

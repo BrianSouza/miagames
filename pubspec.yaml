@@ -18,12 +18,16 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.8
 
 flutter:
   uses-material-design: true
   # Subpastas não são incluídas automaticamente: declare cada uma
   assets:
     - assets/images/
+    - assets/images/mia/
     - assets/games/memory/
     - assets/games/_shared/
     - assets/games/_shared/fonts/
+    - assets/games/_shared/img/

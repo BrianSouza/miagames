@@ -32,7 +32,8 @@ miagames/
 │       ├── home_screen.dart       ← Grid de jogos + seletor de dificuldade (com recordes)
 │       ├── game_screen.dart       ← WebView + ponte com o jogo
 │       └── parents_screen.dart    ← Área dos pais
-├── assets/images/                 ← Ícones dos jogos (SVG)
+├── assets/images/                 ← Ícones dos jogos e a gatinha Mia em 4 poses (SVG)
+├── assets/icon/  assets/splash/   ← PNGs do ícone do app e do splash (gerados, veja abaixo)
 ├── assets/games/_shared/          ← Kit comum dos jogos (carregado por `../_shared/...`)
 │   ├── kit.css                    ← Reset, fonte e cores
 │   ├── bridge.js                  ← Ponte com o Flutter (INIT, voz, fim de jogo, voltar)
@@ -45,7 +46,8 @@ miagames/
 │   ├── style.css
 │   ├── memory-logic.js            ← Regras puras (testadas no Node)
 │   └── game.js                    ← DOM e timers
-├── tool/generate_illustrations.py ← Gera os SVGs (python3, sem dependências)
+├── tool/generate_illustrations.py ← Gera os SVGs (python3, sem dependências); a Mia é desenhada em tool/mia.py
+├── tool/render_brand.js           ← Rasteriza a Mia para o ícone e o splash (Chromium do Playwright)
 ├── test/
 │   ├── *_test.dart                ← Testes Flutter
 │   ├── games/*.test.js            ← Testes da lógica dos jogos (node --test)
@@ -53,6 +55,21 @@ miagames/
 ├── android/  ios/                 ← Projetos nativos
 └── pubspec.yaml
 ```
+
+### Ícone e splash (a gatinha Mia)
+
+A Mia é desenhada em código (`tool/mia.py`), só com formas e traços. Para refazer a arte:
+
+```bash
+python3 tool/generate_illustrations.py          # SVGs (app, jogos e fontes do ícone)
+node tool/render_brand.js                       # PNGs em assets/icon e assets/splash
+dart run flutter_launcher_icons                 # ícone (Android adaptativo + monocromático, iOS)
+dart run flutter_native_splash:create           # splash nativo (fundo creme + Mia)
+```
+
+Os arquivos nativos gerados ficam versionados. Depois de rodar, confira o `git diff`: as duas
+ferramentas reescrevem `Info.plist` (só formatação) e trocam uma opção do `project.pbxproj` que
+não deve mudar. Os PNGs de `assets/icon` e `assets/splash` são só entrada das ferramentas, e não vão dentro do app.
 
 ### Ponte Flutter ↔ jogo
 
@@ -175,5 +192,4 @@ Para cobrir um jogo novo, abra-o com `fixtures.js` ou crie uma fixture parecida.
 ## 📈 Próximos passos
 
 - Novos jogos: números, cores, traçado de letras
-- Ícone do app (launcher) com arte final
 - Compras no app, se houver, atrás do bloqueio parental
