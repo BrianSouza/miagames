@@ -245,7 +245,38 @@ void main() {
       expect(store.voiceEnabled, isFalse);
     });
 
+    testWidgets('cada jogo conta a pontuação do seu jeito: jogadas ou erros', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await store.saveResult(
+        gameId: 'which-letter',
+        difficulty: GameDifficulty.easy,
+        stars: 3,
+        moves: 1,
+        timeSeconds: 40,
+      );
+      await store.saveResult(
+        gameId: 'memory',
+        difficulty: GameDifficulty.easy,
+        stars: 3,
+        moves: 7,
+        timeSeconds: 40,
+      );
+      await tester.pumpWidget(app());
+      await openParentsArea(tester);
+
+      expect(find.text('Recorde: 1 erro · 1 partida'), findsOneWidget);
+      expect(find.text('Recorde: 7 jogadas · 1 partida'), findsOneWidget);
+    });
+
     testWidgets('mostra o progresso e apaga com confirmação', (tester) async {
+      // tela alta: a lista é preguiçosa e só constrói o que cabe
+      tester.view.physicalSize = const Size(800, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
       await store.saveResult(
         gameId: 'memory',
         difficulty: GameDifficulty.easy,
@@ -257,7 +288,8 @@ void main() {
       await openParentsArea(tester);
 
       expect(find.text('Recorde: 6 jogadas · 1 partida'), findsOneWidget);
-      expect(find.text('Ainda não jogou'), findsNWidgets(2));
+      final levels = gameRegistry.length * GameDifficulty.values.length;
+      expect(find.text('Ainda não jogou'), findsNWidgets(levels - 1));
 
       await tester.scrollUntilVisible(find.text('Apagar progresso'), 100);
       await tester.tap(find.text('Apagar progresso'));
@@ -266,7 +298,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(store.record('memory', GameDifficulty.easy), isNull);
-      expect(find.text('Ainda não jogou'), findsNWidgets(3));
+      expect(find.text('Ainda não jogou'), findsNWidgets(levels));
     });
   });
 }

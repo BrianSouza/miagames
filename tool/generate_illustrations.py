@@ -3,6 +3,7 @@
 Uso: python3 tool/generate_illustrations.py
 
 - assets/images/memory_game.svg  → ícone do jogo da memória na Home
+- assets/images/which_letter.svg → ícone do "Qual é a letra?"
 - assets/images/mia/*.svg        → a gatinha Mia em 4 poses (Flutter)
 - assets/games/_shared/img/*.svg → as mesmas poses para os jogos (web)
 - tool/brand/*.svg               → fontes do ícone do app e do splash (veja tool/render_brand.js)
@@ -69,3 +70,20 @@ print('Mia gerada:', ', '.join(POSES))
 write('tool/brand/mia_head.svg', head_svg())
 write('tool/brand/mia_mono.svg', mono_svg())
 print('fontes do ícone gerados em tool/brand/')
+
+
+# ── Ícone do "Qual é a letra?": uma letra num cartão e um alto-falante ────────
+which_letter = (
+    '<rect x="14" y="20" width="62" height="80" rx="12" fill="#fff" stroke="#D9E2E5" stroke-width="2"/>'
+    # o "B" grande
+    + stroke('M32 38 L32 82 M32 38 H48 Q60 38 60 50 Q60 60 48 60 H32 M48 60 Q62 60 62 71 Q62 82 48 82 H32', BLUE, 7)
+    # alto-falante com ondas
+    + '<g transform="translate(72 52)">'
+    '<path d="M0 12 H8 L20 2 V34 L8 24 H0 Z" fill="#E76F7F"/>'
+    + stroke('M26 10 Q34 18 26 26', '#E76F7F', 4.5)
+    + stroke('M31 3 Q45 18 31 33', '#E76F7F', 4.5)
+    + '</g>'
+)
+write('assets/images/which_letter.svg',
+      f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">{which_letter}</svg>\n')
+print('ícone gerado: assets/images/which_letter.svg')

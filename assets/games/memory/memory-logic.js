@@ -10,11 +10,11 @@
 (function (root, factory) {
   'use strict';
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory(require('../_shared/symbols.js'));
+    module.exports = factory(require('../_shared/symbols.js'), require('../_shared/game-utils.js'));
   } else {
-    root.MemoryLogic = factory(root.GameSymbols);
+    root.MemoryLogic = factory(root.GameSymbols, root.GameUtils);
   }
-})(this, function (Symbols) {
+})(this, function (Symbols, Utils) {
   'use strict';
 
   // maxNumber: os números sorteados vão de 0 até este valor. No fácil, só
@@ -182,33 +182,9 @@
     return 1;
   }
 
-  /**
-   * A partida terminada bate o recorde salvo? Mais estrelas vencem; com as
-   * mesmas estrelas, menos jogadas. Sem recorde salvo, não é "novo recorde"
-   * (a primeira partida não deve parecer uma conquista especial).
-   */
-  function isNewRecord(best, stars, moves) {
-    if (!best) return false;
-    if (stars !== best.stars) return stars > best.stars;
-    return moves < best.moves;
-  }
-
-  /** Milissegundos desde o primeiro toque (0 antes de começar) */
-  function elapsedMs(state, now) {
-    if (state.startedAt === null) return 0;
-    var end = state.completedAt !== null ? state.completedAt : now;
-    return Math.max(0, end - state.startedAt);
-  }
-
-  /**
-   * Lado da carta (px) para o grid caber na área disponível, considerando
-   * largura E altura — em tablets e telas baixas a altura é o limite.
-   */
-  function cardSize(width, height, cols, rows, gap) {
-    var byWidth = (width - gap * (cols - 1)) / cols;
-    var byHeight = (height - gap * (rows - 1)) / rows;
-    return Math.max(0, Math.floor(Math.min(byWidth, byHeight)));
-  }
+  var isNewRecord = Utils.isNewRecord;
+  var elapsedMs = Utils.elapsedMs;
+  var cardSize = Utils.fitSquare;
 
   return {
     DIFFICULTY: DIFFICULTY,

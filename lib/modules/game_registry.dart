@@ -22,6 +22,28 @@ final List<GameModule> gameRegistry = [
       GameDifficulty.hard: 'Letras e números até 50',
     },
   ),
+  const GameModule(
+    id: 'which-letter',
+    displayName: 'Qual é a letra?',
+    iconAsset: 'assets/images/which_letter.svg',
+    accentColor: Color(0xFFFF6B6B),
+    ageRange: [4, 6],
+    skills: ['Letras', 'Números', 'Escuta'],
+    difficulties: [
+      GameDifficulty.easy,
+      GameDifficulty.medium,
+      GameDifficulty.hard,
+    ],
+    assetPath: 'assets/games/which-letter/index.html',
+    scoreLabel: 'erros',
+    scoreLabelSingular: 'erro',
+    // Mantenha em sincronia com `maxNumber` em which-letter-logic.js
+    difficultyHints: {
+      GameDifficulty.easy: 'Só letras',
+      GameDifficulty.medium: 'Letras e números até 20',
+      GameDifficulty.hard: 'Letras e números até 50',
+    },
+  ),
   // Próximos jogos:
   // GameModule(id: 'number-puzzle', displayName: 'Quebra-Cabeça', ...)
   // GameModule(id: 'color-match',   displayName: 'Mistura de Cores', ...)

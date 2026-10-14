@@ -54,4 +54,32 @@ void main() {
       );
     }
   });
+
+  test('os textos de dificuldade do "Qual é a letra?" batem com o jogo', () {
+    final game = findGameById('which-letter')!;
+    final logic = File(
+      'assets/games/which-letter/which-letter-logic.js',
+    ).readAsStringSync();
+    final max = {
+      for (final m in RegExp(
+        r'(easy|medium|hard):\s*\{[^}]*maxNumber:\s*(\d+|null)',
+      ).allMatches(logic))
+        m[1]!: m[2]!,
+    };
+    expect(max, {'easy': 'null', 'medium': '20', 'hard': '50'});
+
+    expect(game.hintFor(GameDifficulty.easy), 'Só letras');
+    expect(game.hintFor(GameDifficulty.medium), contains('até 20'));
+    expect(game.hintFor(GameDifficulty.hard), contains('até 50'));
+  });
+
+  test('cada jogo tem id único, ilustração e conta erros ou jogadas', () {
+    final ids = gameRegistry.map((g) => g.id).toList();
+    expect(ids.toSet().length, ids.length);
+    for (final game in gameRegistry) {
+      expect(File(game.iconAsset).existsSync(), isTrue, reason: game.id);
+      expect(File(game.assetPath).existsSync(), isTrue, reason: game.id);
+      expect(['jogadas', 'erros'], contains(game.scoreLabel), reason: game.id);
+    }
+  });
 }

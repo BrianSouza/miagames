@@ -28,6 +28,7 @@ flutter:
     - assets/images/
     - assets/images/mia/
     - assets/games/memory/
+    - assets/games/which-letter/
     - assets/games/_shared/
     - assets/games/_shared/fonts/
     - assets/games/_shared/img/

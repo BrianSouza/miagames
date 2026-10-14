@@ -10,12 +10,16 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { test: base, expect } = require('@playwright/test');
 
-const GAME_URL = pathToFileURL(
-  path.join(__dirname, '../../assets/games/memory/index.html'),
-).href;
+const WhichLetterLogic = require('../../assets/games/which-letter/which-letter-logic.js');
+
+const gameUrl = (id) =>
+  pathToFileURL(path.join(__dirname, `../../assets/games/${id}/index.html`)).href;
 
 /** Tempo que o jogo espera antes de verificar as duas cartas (CHECK_DELAY_MS) */
 const CHECK_DELAY_MS = 800;
+
+/** Pausa de comemoração dos jogos de responder, antes da próxima rodada */
+const ADVANCE_DELAY_MS = 1500;
 
 /**
  * Gerador pseudoaleatório com semente (mulberry32). O mesmo código roda na página
@@ -33,10 +37,12 @@ function prng(seed) {
   };
 }
 
-class MemoryGame {
-  constructor(page, problems) {
+/** O que todo jogo tem: abrir como a WebView do Flutter, ouvir a ponte e avançar o relógio */
+class Game {
+  constructor(page, problems, id) {
     this.page = page;
     this.problems = problems;
+    this.id = id;
   }
 
   /** Abre o jogo e envia o INIT, como o Flutter faz quando a página carrega. */
@@ -62,20 +68,16 @@ class MemoryGame {
         }
       };
     });
-    await this.page.goto(GAME_URL);
+    await this.page.goto(gameUrl(this.id));
     // Pausa o relógio: depois de install() o tempo ainda corre sozinho, o que
     // deixaria os cronômetros e prazos dependentes da velocidade da máquina.
     await this.page.clock.pauseAt(new Date('2030-01-01T00:00:10Z'));
     await this.page.evaluate(
       (init) =>
-        window.handleFlutterMessage({ type: 'INIT', gameId: 'memory', ...init }),
-      { difficulty, sound, best },
+        window.handleFlutterMessage({ type: 'INIT', ...init }),
+      { gameId: this.id, difficulty, sound, best },
     );
     return this;
-  }
-
-  cards() {
-    return this.page.locator('.card');
   }
 
   /** Mensagens enviadas ao Flutter (acumuladas desde o início) */
@@ -96,6 +98,16 @@ class MemoryGame {
   /** Avança o relógio do jogo */
   tick(ms) {
     return this.page.clock.runFor(ms);
+  }
+}
+
+class MemoryGame extends Game {
+  constructor(page, problems) {
+    super(page, problems, 'memory');
+  }
+
+  cards() {
+    return this.page.locator('.card');
   }
 
   /** Símbolo (letra ou número) de cada carta, na ordem do tabuleiro */
@@ -133,8 +145,68 @@ class MemoryGame {
   }
 }
 
+/** "Qual é a letra?": sabe a resposta certa porque o sorteio usa a mesma semente que o Node */
+class WhichLetterGame extends Game {
+  constructor(page, problems) {
+    super(page, problems, 'which-letter');
+  }
+
+  async open({ difficulty = 'easy', seed = 1, ...rest } = {}) {
+    await super.open({ difficulty, seed, ...rest });
+    this.plan = WhichLetterLogic.createGame(difficulty, { random: prng(seed) });
+    return this;
+  }
+
+  options() {
+    return this.page.locator('.option');
+  }
+
+  option(symbol) {
+    return this.page.locator(`.option[data-symbol="${symbol}"]`);
+  }
+
+  /** Quantas rodadas já foram acertadas */
+  solvedCount() {
+    return this.page.locator('#progress .dot.done').count();
+  }
+
+  /** A rodada em que a criança está, segundo o sorteio com semente */
+  async currentRound() {
+    return this.plan.rounds[await this.solvedCount()];
+  }
+
+  async correctSymbol() {
+    return (await this.currentRound()).answer.symbol;
+  }
+
+  /** Uma figura errada da rodada atual (a n-ésima) */
+  async wrongSymbol(n = 0) {
+    const round = await this.currentRound();
+    return round.options.filter((o) => o.symbol !== round.answer.symbol)[n].symbol;
+  }
+
+  /**
+   * Acerta a rodada atual e espera a pausa de comemoração. `force`: depois de 2 erros
+   * a resposta certa pulsa sem parar, e o Playwright esperaria ela "ficar parada".
+   */
+  async answerRight() {
+    await this.option(await this.correctSymbol()).click({ force: true });
+    await this.tick(ADVANCE_DELAY_MS);
+  }
+
+  /** Joga uma partida perfeita, sem erros */
+  async solve() {
+    for (let i = 0; i < this.plan.total; i++) await this.answerRight();
+  }
+}
+
+const CLASSES = { memory: MemoryGame, 'which-letter': WhichLetterGame };
+
 const test = base.extend({
-  game: async ({ page }, use) => {
+  // Qual jogo abrir: `test.use({ gameId: 'which-letter' })` (o padrão é a Memória)
+  gameId: ['memory', { option: true }],
+
+  game: async ({ page, gameId }, use) => {
     const problems = [];
     page.on('pageerror', (e) => problems.push(`erro na página: ${e.message}`));
     page.on('requestfailed', (r) => problems.push(`falhou ao carregar: ${r.url()}`));
@@ -142,10 +214,10 @@ const test = base.extend({
       if (m.type() === 'error') problems.push(`console.error: ${m.text()}`);
     });
 
-    await use(new MemoryGame(page, problems));
+    await use(new CLASSES[gameId](page, problems));
 
     expect(problems, 'erros de página ou recursos que não carregaram').toEqual([]);
   },
 });
 
-module.exports = { test, expect, CHECK_DELAY_MS, prng };
+module.exports = { test, expect, CHECK_DELAY_MS, ADVANCE_DELAY_MS, prng };
