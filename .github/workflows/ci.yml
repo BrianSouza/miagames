@@ -70,3 +70,11 @@ jobs:
           channel: stable
           cache: true
       - run: flutter build apk --debug
+      # APK para testar num aparelho sem instalar o Flutter:
+      # Actions > execução do PR > Artifacts > miagames-debug-apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: miagames-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

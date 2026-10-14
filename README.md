@@ -113,6 +113,18 @@ npm run test:e2e:ui                # o mesmo, no modo interativo
 
 Os mesmos comandos, além de um build Android, rodam no CI a cada PR.
 
+### Testar num aparelho Android sem instalar o Flutter
+
+Todo PR gera um APK de teste no CI:
+
+1. Abra o PR no GitHub, aba **Checks** (ou **Actions**) e entre na execução mais recente
+2. Em **Artifacts**, baixe `miagames-debug-apk` (um `.zip` com o `app-debug.apk`)
+3. Extraia o `.zip` no aparelho (ou no computador e copie o arquivo)
+4. Abra o APK e permita a instalação de fontes desconhecidas quando o Android pedir
+
+É um APK de **depuração**, assinado com a chave de debug: serve para testar, não para publicar.
+Fica disponível por 14 dias. Baixar artefatos exige estar logado no GitHub.
+
 ### Testes de navegador (Playwright)
 
 Os mini-jogos são HTML; os testes em `test/e2e/` abrem o jogo real num Chromium
