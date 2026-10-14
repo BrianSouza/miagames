@@ -36,7 +36,7 @@ test.describe('efeitos sonoros', () => {
 
     await game.solve();
 
-    expect(await game.spoken()).toContain('Muito bem!');
+    expect((await game.spoken()).some((t) => t.endsWith('! Muito bem!'))).toBe(true);
   });
 });
 

@@ -32,11 +32,11 @@ miagames/
 │       ├── home_screen.dart       ← Grid de jogos + seletor de dificuldade (com recordes)
 │       ├── game_screen.dart       ← WebView + ponte com o jogo
 │       └── parents_screen.dart    ← Área dos pais
-├── assets/images/                 ← Ilustrações do app (ícones dos jogos)
+├── assets/images/                 ← Ícones dos jogos (SVG)
 ├── assets/games/memory/           ← Jogo da Memória (mini-app web)
 │   ├── index.html
 │   ├── style.css
-│   ├── img/                       ← Ilustrações dos animais (SVG)
+│   ├── fonts/                     ← Andika (fonte para alfabetização, licença OFL)
 │   ├── memory-logic.js            ← Regras puras (testadas no Node)
 │   ├── sounds.js                  ← Efeitos sonoros sintetizados (Web Audio)
 │   └── game.js                    ← DOM, timers e ponte
@@ -73,8 +73,16 @@ A Home, o seletor de dificuldade e a tela de jogo funcionam automaticamente.
 
 ## 🎮 Jogo da Memória
 
-Pares de animais ilustrados, com o nome de cada um falado ao virar a carta e
-efeitos sonoros ao virar, acertar, errar e vencer.
+Pares de **letras e números**, para quem está na fase de alfabetização. Ao virar uma
+carta, a voz fala o **nome** da letra ("Bê", "Cê") ou do número ("três"); ao achar o par, ela
+repete o nome e elogia. Há efeitos sonoros ao virar, acertar, errar e vencer.
+
+- Cada partida mistura cerca de 60% de letras (A–Z) e 40% de números (0–9)
+- Letras em azul e números em rosa; todas as letras têm a mesma cor, então a cor não entrega o par
+- **Nunca aparecem juntos símbolos parecidos** ("O" com "0", "I" com "1"): o erro não seria de
+  memória, e sim de uma distinção que a criança ainda não domina
+- Fonte **Andika**, desenhada para quem está aprendendo a ler: o "I" tem serifas e não se confunde com o "1" nem com o "L"
+- A voz usa o nome da letra em português, e não o que o motor de voz leria sozinho (que leria "E" como a palavra "e")
 
 | Nível   | Pares | Colunas |
 |---------|-------|---------|
@@ -150,7 +158,7 @@ Para cobrir um jogo novo, abra-o com `fixtures.js` ou crie uma fixture parecida.
 
 ## ♿ Pensado para crianças de 3 a 6 anos
 
-- Voz em pt-BR: nomes dos jogos, das dificuldades e dos animais, e comemoração a cada par
+- Voz em pt-BR: nomes dos jogos, das dificuldades, das letras e dos números, e comemoração a cada par
 - Áreas de toque de no mínimo 56px
 - Texto e botões com contraste ≥ 4.5:1 (WCAG AA)
 - Sair do jogo exige **segurar** o botão voltar do jogo ou tocar **duas vezes** no voltar do sistema

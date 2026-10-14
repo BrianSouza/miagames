@@ -4,6 +4,14 @@
   padding: 0;
 }
 
+@font-face {
+  font-family: 'Andika';
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;   /* sem trocar de fonte no meio da partida */
+  src: url('fonts/Andika-Bold.woff2') format('woff2');
+}
+
 :root {
   --turquoise: #4ECDC4;
   --turquoise-dark: #0B7A73;   /* texto/botão sobre branco: contraste ≥ 4.5:1 */
@@ -147,16 +155,24 @@ html, body {
   color: rgba(255,255,255,.7);
 }
 
-/* Card back (lado da ilustração) */
+/* Card back (lado da letra ou do número) */
 .card-back {
   background: var(--surface);
   transform: rotateY(180deg);
 }
-.card-back img {
-  width: 82%;
-  height: 82%;
+.glyph {
+  /* Andika: fonte feita para quem está aprendendo a ler — o "I" tem serifas e
+     não se confunde com o "1" nem com o "L"; o "0" é mais estreito que o "O" */
+  font-family: 'Andika', 'Trebuchet MS', 'Verdana', sans-serif;
+  font-weight: 700;
+  font-size: calc(var(--card-size) * 0.6);
+  line-height: 1;
   pointer-events: none;
 }
+/* Letras e números têm cores diferentes (as duas com contraste ≥ 4.5:1 sobre o
+   branco), mas todas as letras compartilham a cor: a cor não entrega o par */
+.card-back[data-kind="letter"] { color: #1565C0; }
+.card-back[data-kind="number"] { color: #C2185B; }
 
 /* Matched state */
 .card.matched .card-inner { transform: rotateY(180deg); }

@@ -43,23 +43,26 @@ Legenda: ✅ feito · ⏭️ fica para depois
 | 3.2 | O cronômetro começava quando o tabuleiro aparecia | Começa no primeiro toque | ✅ |
 | 3.3 | Mensagens inválidas da WebView derrubavam a tela (`jsonDecode` sem tratamento) | Mensagens malformadas são ignoradas | ✅ |
 | 3.4 | A WebView podia navegar para qualquer URL | Só são permitidos os arquivos locais do jogo | ✅ |
-| 3.5 | Leitor de tela anunciava a carta escondida como "Carta virada" | "Carta escondida", e a carta aberta anuncia o animal | ✅ |
+| 3.5 | Leitor de tela anunciava a carta escondida como "Carta virada" | "Carta escondida", e a carta aberta anuncia "Letra B" ou "Número 3" | ✅ |
 
 ## Fase 4 — Usabilidade para crianças de 3 a 6 anos
 
 | # | Problema | Solução | Status |
 |---|----------|---------|--------|
-| 4.1 | Nenhum som: quem não lê não tem retorno nenhum | Narração em pt-BR com `flutter_tts`: o nome do animal de cada carta, "Muito bem!" a cada par, comemoração no final e os nomes dos jogos e das dificuldades. O jogo pede a fala ao Flutter pela ponte (`SPEAK`), já que a voz do navegador não funciona na WebView do Android | ✅ |
+| 4.1 | Nenhum som: quem não lê não tem retorno nenhum | Narração em pt-BR com `flutter_tts`: o nome da letra ou do número de cada carta, "Muito bem!" a cada par, comemoração no final e os nomes dos jogos e das dificuldades. O jogo pede a fala ao Flutter pela ponte (`SPEAK`), já que a voz do navegador não funciona na WebView do Android | ✅ |
 | 4.2 | Contraste ruim: texto branco sobre turquesa (1.9:1), contador turquesa, "jogadas" cinza-claro sobre branco | Cores de texto e botões com contraste ≥ 4.5:1 (WCAG AA) | ✅ |
 | 4.3 | Botões do jogo com 44px, abaixo dos 56px usados no resto do app | 56px | ✅ |
 | 4.4 | Tabuleiro limitado a 420px de largura (pequeno em tablets) e calculado só pela largura | Tamanho calculado pela largura **e** pela altura disponíveis | ✅ |
 | 4.5 | Um toque no "voltar" do jogo ou no voltar do sistema encerrava a partida sem querer | No jogo, é preciso **segurar** o botão voltar. No sistema, é preciso tocar voltar duas vezes. Um toque só mostra a dica | ✅ |
-| 4.6 | Emoji no lugar de ilustrações: a aparência mudava de um aparelho para outro | 10 animais desenhados em SVG num estilo único, mais o ícone do jogo e as estrelas do resultado. Tudo é gerado por `tool/generate_illustrations.py`, então dá para ajustar e regenerar | ✅ |
+| 4.6 | Emoji no lugar de ilustrações: a aparência mudava de um aparelho para outro | Ícone do jogo e estrelas do resultado em SVG, desenhados com traços (sem `<text>`, que o `flutter_svg` não desenha). Gerados por `tool/generate_illustrations.py` | ✅ |
 | 4.7 | Nenhum efeito sonoro além da voz | Sons de virar, acertar, errar e vencer, **sintetizados** com a Web Audio API (`sounds.js`), sem arquivos de áudio. Volume baixo, para não cobrir a voz | ✅ |
 | 4.8 | O progresso se perdia ao fechar o app | Recordes por jogo e dificuldade (estrelas, jogadas, tempo, partidas) salvos com `shared_preferences`. O seletor de dificuldade mostra o recorde, e o jogo exibe "Novo recorde!" quando ele é batido | ✅ |
 | 4.9 | Sem bloqueio parental | A **Área dos pais** (voz, sons, progresso, apagar progresso) só abre depois de uma conta de somar com resultado de 10 a 18, que crianças de 3 a 6 anos não resolvem | ✅ |
 | 4.10 | Compras no app | Ainda não existem. Quando existirem, devem passar pelo mesmo bloqueio | ⏭️ |
 | 4.11 | Ícone do app (launcher) próprio | Usar `flutter_launcher_icons` com uma arte final | ⏭️ |
+| 4.12 | O jogo usava emoji de animais; a criança está em fase de **alfabetização** e o jogo precisa ensinar letras e números | Jogo da Memória com **letras (A–Z) e números (0–9)**: ~60% letras, ~40% números. A voz fala o **nome** da letra em português. Fonte **Andika**, própria para quem aprende a ler. Nunca juntam "O"/"0" nem "I"/"1" no mesmo tabuleiro | ✅ |
+| 4.13 | Casar maiúscula com minúscula ("A" com "a"), como a escola ensina | Modo extra do Jogo da Memória, com cartas de pares diferentes | ⏭️ |
+| 4.14 | Jogos só de letras ou só de números, e escolher o conjunto de letras (ex.: só as do nome) | Seletor de conteúdo antes da partida | ⏭️ |
 
 ---
 

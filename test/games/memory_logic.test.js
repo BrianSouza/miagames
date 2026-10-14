@@ -38,18 +38,43 @@ describe('createGame', () => {
       for (let pairId = 0; pairId < pairs; pairId++) {
         const pair = state.cards.filter(c => c.pairId === pairId);
         assert.equal(pair.length, 2);
-        assert.equal(pair[0].image, pair[1].image);
-        assert.ok(pair[0].name, 'cada carta tem o nome falado do animal');
+        assert.equal(pair[0].symbol, pair[1].symbol);
+        assert.ok(pair[0].name, 'cada carta tem o nome falado');
+        assert.match(pair[0].label, /^(Letra [A-Z]|Número \d)$/);
       }
     });
   }
 
-  test('cada animal tem uma ilustração que existe em assets/', () => {
-    for (const animal of Logic.ANIMALS) {
-      const file = path.join(GAME_DIR, Logic.imageFor(animal.id));
-      assert.ok(fs.existsSync(file), `falta ${file}`);
-      assert.match(fs.readFileSync(file, 'utf8'), /^<svg /);
+  test('letras e números juntos: cerca de 60% letras', () => {
+    for (const [difficulty, letters, numbers] of [['easy', 4, 2], ['medium', 5, 3], ['hard', 6, 4]]) {
+      const state = Logic.createGame(difficulty);
+      const symbols = [...new Set(state.cards.map(c => c.symbol))];
+      assert.equal(symbols.filter(x => /[A-Z]/.test(x)).length, letters, `${difficulty}: letras`);
+      assert.equal(symbols.filter(x => /\d/.test(x)).length, numbers, `${difficulty}: números`);
     }
+  });
+
+  test('o tipo de cada carta bate com o símbolo', () => {
+    for (const card of Logic.createGame('hard').cards) {
+      assert.equal(card.kind, /[A-Z]/.test(card.symbol) ? 'letter' : 'number');
+    }
+  });
+
+  test('nunca junta símbolos parecidos (O e 0, I e 1) no mesmo tabuleiro', () => {
+    for (let i = 0; i < 2000; i++) {
+      const difficulty = ['easy', 'medium', 'hard'][i % 3];
+      const symbols = new Set(Logic.createGame(difficulty).cards.map(c => c.symbol));
+      for (const [a, b] of [['O', '0'], ['I', '1']]) {
+        assert.ok(!(symbols.has(a) && symbols.has(b)), `${a} e ${b} juntos: ${[...symbols]}`);
+      }
+    }
+  });
+
+  test('a mesma partida se repete com o mesmo sorteio (seed)', () => {
+    const seeded = () => { let n = 7; return () => (n = (n * 16807) % 2147483647) / 2147483647; };
+    const a = Logic.createGame('medium', { random: seeded() });
+    const b = Logic.createGame('medium', { random: seeded() });
+    assert.deepEqual(a.cards, b.cards);
   });
 
   test('dificuldade desconhecida cai no fácil', () => {
@@ -60,6 +85,43 @@ describe('createGame', () => {
     const first = Logic.createGame('easy');
     const second = Logic.createGame('easy', { previousRound: first.round });
     assert.notEqual(first.round, second.round);
+  });
+});
+
+describe('símbolos e nomes falados', () => {
+  test('26 letras e 10 números, sem repetição', () => {
+    assert.equal(Logic.LETTERS.length, 26);
+    assert.equal(Logic.NUMBERS.length, 10);
+    assert.deepEqual(Logic.LETTERS.map(l => l.symbol).join(''), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+    assert.deepEqual(Logic.NUMBERS.map(n => n.symbol).join(''), '0123456789');
+  });
+
+  test('toda letra e número tem um nome falado em português', () => {
+    for (const item of [...Logic.LETTERS, ...Logic.NUMBERS]) {
+      assert.ok(item.name && item.name.length > 0, item.symbol);
+      assert.match(item.name, /^[A-ZÁÉÍÓÚÂÊÔ][a-záéíóúâêôãõç]*$/, `nome de ${item.symbol}`);
+    }
+  });
+
+  test('letras falam o NOME da letra, não o que o motor de voz leria sozinho', () => {
+    const names = Object.fromEntries(Logic.LETTERS.map(l => [l.symbol, l.name]));
+    assert.equal(names.B, 'Bê');
+    assert.equal(names.E, 'Ê');   // sozinho, "E" seria lido como a palavra "e"
+    assert.equal(names.H, 'Agá');
+    assert.equal(names.W, 'Dáblio');
+    assert.equal(names.Y, 'Ípsilon');
+  });
+
+  test('números falam por extenso', () => {
+    assert.deepEqual(Logic.NUMBERS.map(n => n.name),
+      ['Zero', 'Um', 'Dois', 'Três', 'Quatro', 'Cinco', 'Seis', 'Sete', 'Oito', 'Nove']);
+  });
+
+  test('as letras e números de um jogo pequeno nunca se repetem', () => {
+    for (let i = 0; i < 500; i++) {
+      const symbols = Logic.pickSymbols(10).map(x => x.symbol);
+      assert.equal(new Set(symbols).size, symbols.length);
+    }
   });
 });
 

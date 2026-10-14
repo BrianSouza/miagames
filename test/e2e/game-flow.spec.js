@@ -1,4 +1,5 @@
 const { test, expect, CHECK_DELAY_MS } = require('./fixtures');
+const Logic = require('../../assets/games/memory/memory-logic.js');
 
 test.describe('partida', () => {
   test('mostra o tabuleiro com todas as cartas escondidas e acessíveis', async ({ game }) => {
@@ -12,31 +13,84 @@ test.describe('partida', () => {
     }
   });
 
-  for (const [difficulty, cards] of [['easy', 12], ['medium', 16], ['hard', 20]]) {
-    test(`${difficulty}: ${cards} cartas, todas as ilustrações carregam`, async ({ game }) => {
+  for (const [difficulty, cards, letters, numbers] of [
+    ['easy', 12, 4, 2],
+    ['medium', 16, 5, 3],
+    ['hard', 20, 6, 4],
+  ]) {
+    test(`${difficulty}: ${cards} cartas, ${letters} letras e ${numbers} números`, async ({ game }) => {
       await game.open({ difficulty });
 
       await expect(game.cards()).toHaveCount(cards);
-      const loaded = await game.page.evaluate(() =>
-        Promise.all(
-          [...document.querySelectorAll('.card-back img')].map((img) =>
-            img.decode().then(() => img.naturalWidth > 0, () => false),
-          ),
-        ),
-      );
-      expect(loaded).toHaveLength(cards);
-      expect(loaded.every(Boolean)).toBe(true);
+      const symbols = [...new Set(await game.symbols())];
+      expect(symbols.filter((s) => /[A-Z]/.test(s))).toHaveLength(letters);
+      expect(symbols.filter((s) => /\d/.test(s))).toHaveLength(numbers);
     });
   }
 
-  test('virar uma carta fala o animal e atualiza o rótulo para leitores de tela', async ({ game }) => {
+  test('as cartas usam a fonte Andika, feita para quem está aprendendo a ler', async ({ game }) => {
     await game.open();
+
+    await game.page.evaluate(() => document.fonts.ready);
+    expect(await game.page.evaluate(() => document.fonts.check('700 40px Andika'))).toBe(true);
+    const family = await game.page
+      .locator('.glyph')
+      .first()
+      .evaluate((el) => getComputedStyle(el).fontFamily);
+    expect(family).toContain('Andika');
+  });
+
+  test('letras e números têm cores diferentes, mas o par não é entregue pela cor', async ({ game }) => {
+    await game.open({ difficulty: 'hard' });
+
+    const colors = await game.page.evaluate(() =>
+      [...document.querySelectorAll('.card-back')].map((el) => ({
+        kind: el.dataset.kind,
+        color: getComputedStyle(el).color,
+      })),
+    );
+    const byKind = (kind) => new Set(colors.filter((c) => c.kind === kind).map((c) => c.color));
+    expect(byKind('letter').size).toBe(1);
+    expect(byKind('number').size).toBe(1);
+    expect([...byKind('letter')][0]).not.toBe([...byKind('number')][0]);
+  });
+
+  test('as cartas viradas mostram o símbolo grande o bastante para ler', async ({ game }) => {
+    await game.open({ difficulty: 'hard' });
+
+    const card = await game.cards().first().boundingBox();
+    const fontSize = await game.page
+      .locator('.glyph')
+      .first()
+      .evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    expect(fontSize).toBeGreaterThanOrEqual(card.width * 0.55);
+  });
+
+  test('virar uma carta fala o nome da letra ou do número e atualiza o rótulo', async ({ game }) => {
+    await game.open();
+    const [symbol] = await game.symbols();
+    const item = [...Logic.LETTERS, ...Logic.NUMBERS].find((i) => i.symbol === symbol);
 
     await game.cards().first().click();
 
-    const [name] = await game.spoken();
-    expect(name).toMatch(/^[A-ZÀ-Ú][a-zà-ú]+$/);
-    await expect(game.cards().first()).toHaveAttribute('aria-label', name);
+    expect(await game.spoken()).toEqual([item.name]);
+    await expect(game.cards().first()).toHaveAttribute(
+      'aria-label',
+      (item.kind === 'letter' ? 'Letra ' : 'Número ') + symbol,
+    );
+  });
+
+  test('cada letra é falada pelo nome em português, não pelo que o motor de voz leria', async ({ game }) => {
+    // Joga todas as cartas de um tabuleiro difícil e confere o que foi falado
+    await game.open({ difficulty: 'hard' });
+    const symbols = await game.symbols();
+    const [first] = (await game.pairs())[0];
+
+    await game.cards().nth(first).click();
+
+    const [spoken] = await game.spoken();
+    const expected = [...Logic.LETTERS, ...Logic.NUMBERS].find((i) => i.symbol === symbols[first]).name;
+    expect(spoken).toBe(expected);
   });
 
   test('par errado volta a esconder as cartas; par certo fica aberto', async ({ game }) => {
@@ -51,7 +105,9 @@ test.describe('partida', () => {
     await game.flipPair(c, d);
     await expect(game.page.locator('.card.matched')).toHaveCount(2);
     await expect(game.page.locator('#matches')).toHaveText('1/6');
-    expect(await game.spoken()).toContain('Muito bem!');
+    const symbol = (await game.symbols())[c];
+    const item = [...Logic.LETTERS, ...Logic.NUMBERS].find((i) => i.symbol === symbol);
+    expect(await game.spoken()).toContain(`${item.name}! Muito bem!`);
   });
 
   test('não deixa virar uma terceira carta durante a verificação', async ({ game }) => {

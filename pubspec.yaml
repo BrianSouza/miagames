@@ -25,4 +25,4 @@ flutter:
   assets:
     - assets/images/
     - assets/games/memory/
-    - assets/games/memory/img/
+    - assets/games/memory/fonts/

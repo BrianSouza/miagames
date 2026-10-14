@@ -23,23 +23,36 @@
     hard:   { pairs: 10, cols: 4 },
   };
 
-  // 10 animais (suficiente para o nível mais difícil), com o nome falado.
-  // Ilustrações próprias em img/<id>.svg (geradas por tool/generate_illustrations.py)
-  var ANIMALS = [
-    { id: 'cachorro', name: 'Cachorro' },
-    { id: 'gato',     name: 'Gato' },
-    { id: 'rato',     name: 'Rato' },
-    { id: 'coelho',   name: 'Coelho' },
-    { id: 'raposa',   name: 'Raposa' },
-    { id: 'urso',     name: 'Urso' },
-    { id: 'panda',    name: 'Panda' },
-    { id: 'coala',    name: 'Coala' },
-    { id: 'tigre',    name: 'Tigre' },
-    { id: 'leao',     name: 'Leão' },
-  ];
+  // Letras (A–Z) e números (0–9). `name` é o que a voz fala: o NOME da letra em
+  // português ("Bê", "Cê"...), e não o som que o motor de voz leria sozinho —
+  // sozinho, ele lê "E" como a palavra "e" ("i") e "Q" como "cu".
+  var LETTERS = [
+    ['A', 'Á'],    ['B', 'Bê'],   ['C', 'Cê'],    ['D', 'Dê'],     ['E', 'Ê'],
+    ['F', 'Éfe'],  ['G', 'Gê'],   ['H', 'Agá'],   ['I', 'I'],      ['J', 'Jota'],
+    ['K', 'Cá'],   ['L', 'Éle'],  ['M', 'Ême'],   ['N', 'Êne'],    ['O', 'Ó'],
+    ['P', 'Pê'],   ['Q', 'Quê'],  ['R', 'Érre'],  ['S', 'Ésse'],   ['T', 'Tê'],
+    ['U', 'U'],    ['V', 'Vê'],   ['W', 'Dáblio'], ['X', 'Xis'],   ['Y', 'Ípsilon'],
+    ['Z', 'Zê'],
+  ].map(function (l) { return { symbol: l[0], name: l[1], kind: 'letter' }; });
 
-  function imageFor(animalId) {
-    return 'img/' + animalId + '.svg';
+  var NUMBERS = [
+    ['0', 'Zero'],  ['1', 'Um'],    ['2', 'Dois'],  ['3', 'Três'],  ['4', 'Quatro'],
+    ['5', 'Cinco'], ['6', 'Seis'],  ['7', 'Sete'],  ['8', 'Oito'],  ['9', 'Nove'],
+  ].map(function (n) { return { symbol: n[0], name: n[1], kind: 'number' }; });
+
+  /**
+   * Símbolos que se parecem: nunca aparecem no mesmo tabuleiro. Para quem está
+   * aprendendo a ler, "O" e "0" (e "I" e "1") são a mesma figura — o erro não
+   * seria de memória, e sim de uma distinção que a criança ainda não domina.
+   */
+  var LOOKALIKES = { 'O': '0', '0': 'O', 'I': '1', '1': 'I' };
+
+  /** Fração de pares que são números; o resto são letras (foco na alfabetização) */
+  var NUMBER_SHARE = 0.4;
+
+  /** Rótulo para leitores de tela: "Letra B", "Número 3" */
+  function labelFor(item) {
+    return (item.kind === 'letter' ? 'Letra ' : 'Número ') + item.symbol;
   }
 
   /** Tempo (ms) que as duas cartas ficam visíveis antes da verificação */
@@ -61,6 +74,23 @@
   }
 
   /**
+   * Escolhe os símbolos de uma partida: uma mistura de letras e números (cerca de
+   * 60% letras), sem repetir símbolo e sem juntar símbolos parecidos.
+   */
+  function pickSymbols(pairs, random) {
+    var numberCount = Math.round(pairs * NUMBER_SHARE);
+    var letters = shuffle(LETTERS, random).slice(0, pairs - numberCount);
+    var taken = {};
+    letters.forEach(function (l) { taken[l.symbol] = true; });
+
+    var numbers = shuffle(NUMBERS, random)
+      .filter(function (n) { return !taken[LOOKALIKES[n.symbol]]; })
+      .slice(0, numberCount);
+
+    return letters.concat(numbers);
+  }
+
+  /**
    * Cria uma partida nova. `round` identifica a partida: uma verificação
    * agendada numa rodada anterior é ignorada (ver resolve).
    */
@@ -68,13 +98,20 @@
     var opts = options || {};
     var key = DIFFICULTY[difficulty] ? difficulty : 'easy';
     var cfg = DIFFICULTY[key];
-    var animals = shuffle(ANIMALS, opts.random).slice(0, cfg.pairs);
 
     var cards = [];
-    animals.forEach(function (animal, pairId) {
-      var image = imageFor(animal.id);
-      cards.push({ id: pairId * 2,     image: image, name: animal.name, pairId: pairId, state: 'hidden' });
-      cards.push({ id: pairId * 2 + 1, image: image, name: animal.name, pairId: pairId, state: 'hidden' });
+    pickSymbols(cfg.pairs, opts.random).forEach(function (item, pairId) {
+      [0, 1].forEach(function (copy) {
+        cards.push({
+          id: pairId * 2 + copy,
+          symbol: item.symbol,
+          kind: item.kind,
+          name: item.name,
+          label: labelFor(item),
+          pairId: pairId,
+          state: 'hidden',
+        });
+      });
     });
 
     return {
@@ -199,8 +236,10 @@
 
   return {
     DIFFICULTY: DIFFICULTY,
-    ANIMALS: ANIMALS,
-    imageFor: imageFor,
+    LETTERS: LETTERS,
+    NUMBERS: NUMBERS,
+    LOOKALIKES: LOOKALIKES,
+    pickSymbols: pickSymbols,
     CHECK_DELAY_MS: CHECK_DELAY_MS,
     configFor: configFor,
     shuffle: shuffle,

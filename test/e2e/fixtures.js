@@ -76,15 +76,17 @@ class MemoryGame {
     return this.page.clock.runFor(ms);
   }
 
-  /** Índices das cartas agrupados por ilustração: [[a, b], [c, d], ...] */
-  async pairs() {
-    const sources = await this.page.evaluate(() =>
-      [...document.querySelectorAll('.card-back img')].map((i) =>
-        i.getAttribute('src'),
-      ),
+  /** Símbolo (letra ou número) de cada carta, na ordem do tabuleiro */
+  symbols() {
+    return this.page.evaluate(() =>
+      [...document.querySelectorAll('.glyph')].map((g) => g.dataset.symbol),
     );
+  }
+
+  /** Índices das cartas agrupados por símbolo: [[a, b], [c, d], ...] */
+  async pairs() {
     const groups = {};
-    sources.forEach((src, i) => (groups[src] ??= []).push(i));
+    (await this.symbols()).forEach((symbol, i) => (groups[symbol] ??= []).push(i));
     return Object.values(groups);
   }
 

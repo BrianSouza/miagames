@@ -99,8 +99,8 @@
       el.innerHTML =
         '<div class="card-inner">' +
           '<div class="card-front" aria-hidden="true">?</div>' +
-          '<div class="card-back" aria-hidden="true">' +
-            '<img src="' + card.image + '" alt="" draggable="false">' +
+          '<div class="card-back" data-kind="' + card.kind + '" aria-hidden="true">' +
+            '<span class="glyph" data-symbol="' + card.symbol + '">' + card.symbol + '</span>' +
           '</div>' +
         '</div>';
       el.addEventListener('click', function () { onCardClick(card.id); });
@@ -115,7 +115,7 @@
     if (!card || !el) return;
     el.className = 'card' + (card.state === 'matched' ? ' matched' : '');
     el.querySelector('.card-inner').classList.toggle('flipped', card.state !== 'hidden');
-    el.setAttribute('aria-label', card.state === 'hidden' ? 'Carta escondida' : card.name);
+    el.setAttribute('aria-label', card.state === 'hidden' ? 'Carta escondida' : card.label);
   }
 
   /** Ajusta o tamanho das cartas à largura E altura disponíveis */
@@ -174,7 +174,8 @@
     if (outcome.result === 'mismatch') Sounds.play('mismatch');
     if (outcome.result === 'match') {
       Sounds.play('match');
-      speak('Muito bem!');
+      // Repete o nome do par encontrado: reforça a letra/número aprendido
+      speak(findCard(pending[0]).name + '! Muito bem!');
     }
     if (outcome.result === 'complete') endGame();
   }
