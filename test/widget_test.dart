@@ -1,9 +1,13 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:miagames/app.dart';
 import 'package:miagames/core/storage/progress_store.dart';
+import 'package:miagames/core/widgets/game_tile.dart';
+import 'package:miagames/core/widgets/mia_avatar.dart';
 import 'package:miagames/core/widgets/star_rating.dart';
 import 'package:miagames/modules/game_module.dart';
+import 'package:miagames/modules/game_registry.dart';
+import 'package:miagames/screens/home_screen.dart';
 
 import 'fake_narrator.dart';
 import 'test_helpers.dart';
@@ -34,8 +38,38 @@ void main() {
   testWidgets('Home lista os jogos do registry', (tester) async {
     await tester.pumpWidget(app());
 
-    expect(find.text('MiaGames'), findsOneWidget);
-    expect(find.text('Jogo da Memória'), findsOneWidget);
+    for (final game in gameRegistry) {
+      expect(find.text(game.displayName), findsOneWidget);
+    }
+    expect(find.byType(GameTile), findsNWidgets(gameRegistry.length));
+  });
+
+  testWidgets('a Mia cumprimenta e fala quando a criança toca no balão', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app());
+
+    expect(find.text(miaGreeting), findsOneWidget);
+    expect(narrator.spoken, isEmpty, reason: 'nada fala sozinho ao abrir');
+
+    await tester.tap(find.text(miaGreeting));
+    await tester.pump();
+    await tester.tap(find.byType(MiaAvatar).first);
+    await tester.pump();
+
+    expect(narrator.spoken, [miaGreeting, miaGreeting]);
+  });
+
+  testWidgets('os cartões não têm etiquetas de texto das habilidades', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app());
+
+    for (final game in gameRegistry) {
+      for (final skill in game.skills) {
+        expect(find.text(skill), findsNothing, reason: skill);
+      }
+    }
   });
 
   testWidgets('tocar no jogo fala o nome e abre as dificuldades', (
@@ -47,7 +81,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(narrator.spoken, ['Jogo da Memória']);
-    expect(find.text('Escolha a dificuldade:'), findsOneWidget);
     for (final label in ['Fácil', 'Médio', 'Difícil']) {
       expect(find.text(label), findsOneWidget);
     }
@@ -81,6 +114,39 @@ void main() {
     expect(find.byType(StarRating), findsOneWidget);
   });
 
+  testWidgets('o seletor destaca o nível que a Mia sugere', (tester) async {
+    await store.saveResult(
+      gameId: 'memory',
+      difficulty: GameDifficulty.easy,
+      stars: 3,
+      moves: 6,
+      timeSeconds: 20,
+    );
+    await tester.pumpWidget(app());
+
+    await tester.tap(find.text('Jogo da Memória'));
+    await tester.pumpAndSettle();
+
+    // 3 estrelas no fácil: a Mia sugere o médio. A carinha dela (além da que
+    // está no topo da folha) aparece só no botão sugerido.
+    final mediumButton = find.ancestor(
+      of: find.text('Médio'),
+      matching: find.byType(Material),
+    );
+    expect(
+      find.descendant(of: mediumButton.first, matching: find.byType(MiaAvatar)),
+      findsOneWidget,
+    );
+    final easyButton = find.ancestor(
+      of: find.text('Fácil'),
+      matching: find.byType(Material),
+    );
+    expect(
+      find.descendant(of: easyButton.first, matching: find.byType(MiaAvatar)),
+      findsNothing,
+    );
+  });
+
   testWidgets('o card do jogo é um botão para leitores de tela', (
     tester,
   ) async {
@@ -108,6 +174,50 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('Difícil'), findsOneWidget);
+  });
+
+  group('a Home cabe em qualquer tela, sem estourar', () {
+    const sizes = {
+      'celular pequeno 320x568': Size(320, 568),
+      'celular 360x740': Size(360, 740),
+      'celular paisagem 844x390': Size(844, 390),
+      'tablet em pé 800x1280': Size(800, 1280),
+      'tablet deitado 1280x800': Size(1280, 800),
+    };
+    for (final entry in sizes.entries) {
+      testWidgets(entry.key, (tester) async {
+        tester.view.physicalSize = entry.value;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+
+        await tester.pumpWidget(app());
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+
+        // o seletor também cabe (e rola, se precisar)
+        await tester.tap(find.text('Jogo da Memória'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.text('Difícil'), findsOneWidget);
+      });
+    }
+
+    testWidgets('em tela larga os cartões ficam lado a lado', (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(app());
+
+      final tiles = find.byType(GameTile);
+      final first = tester.getTopLeft(tiles.first);
+      final last = tester.getTopLeft(tiles.at(gameRegistry.length - 1));
+      expect(
+        last.dy,
+        first.dy,
+        reason: 'todos os jogos numa só fileira em tela larga',
+      );
+    });
   });
 
   group('Área dos pais', () {

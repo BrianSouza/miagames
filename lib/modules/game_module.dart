@@ -41,6 +41,16 @@ class GameModule {
   // Path to the game's index.html inside Flutter assets.
   final String assetPath;
 
+  /// Como a pontuação ("moves" do GAME_COMPLETE) é chamada na Área dos pais:
+  /// "jogadas" no Jogo da Memória, "erros" nos jogos de responder.
+  /// Nos dois, quanto menos, melhor.
+  final String scoreLabel;
+  final String scoreLabelSingular;
+
+  /// Cor do cartão na Home. Sem ela, usa uma versão clara de [accentColor]
+  /// (texto escuro por cima, com bom contraste).
+  final Color? tileColor;
+
   const GameModule({
     required this.id,
     required this.displayName,
@@ -51,7 +61,17 @@ class GameModule {
     required this.difficulties,
     required this.assetPath,
     this.difficultyHints = const {},
+    this.scoreLabel = 'jogadas',
+    this.scoreLabelSingular = 'jogada',
+    this.tileColor,
   });
+
+  Color get tile =>
+      tileColor ?? Color.lerp(accentColor, const Color(0xFFFFFFFF), 0.65)!;
+
+  /// "1 jogada", "6 jogadas", "0 erros"
+  String scoreText(int value) =>
+      '$value ${value == 1 ? scoreLabelSingular : scoreLabel}';
 
   String hintFor(GameDifficulty difficulty) =>
       difficultyHints[difficulty] ?? difficulty.description;

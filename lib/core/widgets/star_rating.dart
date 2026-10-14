@@ -38,10 +38,18 @@ class StarRating extends StatelessWidget {
 
 /// Nível de dificuldade em barras crescentes (1 a 3), como sinal de celular.
 class LevelBars extends StatelessWidget {
-  const LevelBars({super.key, required this.level, required this.color});
+  const LevelBars({
+    super.key,
+    required this.level,
+    required this.color,
+    this.scale = 1,
+  });
 
   final int level;
   final Color color;
+
+  /// Tamanho relativo das barras (1 = o padrão)
+  final double scale;
 
   @override
   Widget build(BuildContext context) {
@@ -51,12 +59,12 @@ class LevelBars extends StatelessWidget {
       children: [
         for (var i = 1; i <= 3; i++)
           Container(
-            width: 7,
-            height: 6.0 + i * 6,
-            margin: const EdgeInsets.only(right: 3),
+            width: 7 * scale,
+            height: (6.0 + i * 6) * scale,
+            margin: EdgeInsets.only(right: 3 * scale),
             decoration: BoxDecoration(
               color: i <= level ? color : const Color(0xFFDFE6E9),
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(2 * scale),
             ),
           ),
       ],

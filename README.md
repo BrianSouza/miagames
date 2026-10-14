@@ -24,12 +24,14 @@ miagames/
 │   │   ├── bridge/game_session.dart ← Ponte de uma partida (INIT, voz, salvar)
 │   │   ├── storage/progress_store.dart ← Recordes e preferências (shared_preferences)
 │   │   ├── theme/                 ← Cores, espaçamento, ThemeData
-│   │   └── widgets/               ← ExitGuard, bloqueio parental, estrelas
+│   │   └── widgets/               ← ExitGuard, bloqueio parental, estrelas, Mia (MiaAvatar), cartão de jogo
 │   ├── modules/
 │   │   ├── game_module.dart       ← Contrato de um jogo + dificuldades
-│   │   └── game_registry.dart     ← Lista de jogos exibidos na Home
+│   │   ├── game_registry.dart     ← Lista de jogos exibidos na Home
+│   │   └── recommended_difficulty.dart ← Nível que a Mia sugere (primeiro sem 3 estrelas)
 │   └── screens/
-│       ├── home_screen.dart       ← Grid de jogos + seletor de dificuldade (com recordes)
+│       ├── home_screen.dart       ← A Mia acena + cartões grandes dos jogos (grade adaptativa)
+│       ├── difficulty_sheet.dart  ← 3 botões grandes de nível, com recorde e a sugestão da Mia
 │       ├── game_screen.dart       ← WebView + ponte com o jogo
 │       └── parents_screen.dart    ← Área dos pais
 ├── assets/images/                 ← Ícones dos jogos e a gatinha Mia em 4 poses (SVG)
@@ -182,8 +184,15 @@ Para cobrir um jogo novo, abra-o com `fixtures.js` ou crie uma fixture parecida.
 
 ## ♿ Pensado para crianças de 3 a 6 anos
 
+- **A gatinha Mia** acena na Home (tocar nela fala "Oi! Vamos brincar?"), pensa enquanto o jogo carrega e comemora no fim
+- **Quase sem texto**: cada jogo é um cartão grande com figura e alto-falante; o nome é falado ao toque
+- **Sem cronômetro nem contagem de jogadas** na tela da criança: o progresso é uma fileira de estrelas que acendem ao acertar. Jogadas e tempo continuam salvos para a Área dos pais
+- **Retorno sem castigo**: acertar faz o par "pular", errar balança de leve, nunca vermelho forte nem "errou"
+- A **Mia sugere o nível**: o primeiro que ainda não tem as 3 estrelas (o botão "respira" por alguns segundos)
+- Tela de parabéns com confete (desligado para quem pede menos movimento), estrelas que aparecem uma a uma e dois botões grandes com ícone
+- **Funciona em pé e deitado**: a grade da Home e o tabuleiro se ajustam à tela
 - Voz em pt-BR: nomes dos jogos, das dificuldades, das letras e dos números, e comemoração a cada par
-- Áreas de toque de no mínimo 56px
+- Áreas de toque de no mínimo 56px (botões do jogo com 60px, os da tela de parabéns com 88px)
 - Texto e botões com contraste ≥ 4.5:1 (WCAG AA)
 - Sair do jogo exige **segurar** o botão voltar do jogo ou tocar **duas vezes** no voltar do sistema
 - **Área dos pais** atrás de um bloqueio (conta de somar): liga e desliga voz e sons, mostra o progresso e permite apagá-lo

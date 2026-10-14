@@ -90,6 +90,7 @@ class ParentsScreen extends StatelessWidget {
               ),
               for (final diff in game.difficulties)
                 _RecordTile(
+                  game: game,
                   difficulty: diff,
                   record: store.record(game.id, diff),
                 ),
@@ -140,8 +141,13 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _RecordTile extends StatelessWidget {
-  const _RecordTile({required this.difficulty, required this.record});
+  const _RecordTile({
+    required this.game,
+    required this.difficulty,
+    required this.record,
+  });
 
+  final GameModule game;
   final GameDifficulty difficulty;
   final GameRecord? record;
 
@@ -153,7 +159,7 @@ class _RecordTile extends StatelessWidget {
       subtitle: Text(
         r == null
             ? 'Ainda não jogou'
-            : 'Recorde: ${r.moves} jogadas · '
+            : 'Recorde: ${game.scoreText(r.moves)} · '
                   '${r.timesPlayed} ${r.timesPlayed == 1 ? 'partida' : 'partidas'}',
       ),
       trailing: r == null ? null : StarRating(stars: r.stars),
