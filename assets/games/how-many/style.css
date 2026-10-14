@@ -1,0 +1,74 @@
+/* Retrato: a Mia pergunta em cima, os objetos no meio e as respostas embaixo.
+   Paisagem: os objetos à esquerda; a Mia e as respostas à direita. */
+.stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) minmax(168px, 28vh);
+  grid-template-areas: "asker" "objects" "options";
+  gap: 8px;
+  align-items: stretch;
+  justify-items: center;
+}
+.asker { grid-area: asker; }
+.objects-area { grid-area: objects; }
+.options-area { grid-area: options; }
+
+.asker .mia { width: min(12vh, 96px); height: min(12vh, 96px); }
+
+@media (orientation: landscape) {
+  .stage {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas: "objects asker" "objects options";
+    gap: 8px 24px;
+  }
+  .asker .mia { width: min(22vh, 120px); height: min(22vh, 120px); }
+}
+
+.objects-area {
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Fileiras de 5: colunas e tamanho vêm do jogo (game.js) */
+.objects { display: grid; --obj-size: 64px; }
+
+.obj {
+  position: relative;
+  width: var(--obj-size);
+  height: var(--obj-size);
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  -webkit-touch-callout: none;
+  transition: transform .15s cubic-bezier(.34,1.56,.64,1);
+}
+.obj img { width: 100%; height: 100%; pointer-events: none; }
+.obj:active { transform: scale(.9); }
+.obj.counted { transform: scale(.92); }
+
+/* O número que a criança acabou de contar fica ao lado do objeto */
+.obj .badge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  min-width: 40%;
+  height: 40%;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: #C2185B;
+  box-shadow: 0 2px 4px rgba(0,0,0,.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Andika', 'Trebuchet MS', 'Verdana', sans-serif;
+  font-weight: 700;
+  font-size: calc(var(--obj-size) * .27);
+  line-height: 1;
+  animation: pop .35s cubic-bezier(.34,1.56,.64,1);
+}

@@ -73,6 +73,28 @@ void main() {
     expect(game.hintFor(GameDifficulty.hard), contains('até 50'));
   });
 
+  test('os textos de dificuldade do "Quantos tem?" batem com o jogo', () {
+    final game = findGameById('how-many')!;
+    final logic = File(
+      'assets/games/how-many/how-many-logic.js',
+    ).readAsStringSync();
+    final max = {
+      for (final m in RegExp(
+        r'(easy|medium|hard):\s*\{[^}]*max:\s*(\d+)',
+      ).allMatches(logic))
+        m[1]!: int.parse(m[2]!),
+    };
+    expect(max, {'easy': 5, 'medium': 10, 'hard': 20});
+
+    for (final difficulty in GameDifficulty.values) {
+      expect(
+        game.hintFor(difficulty),
+        'Contar de 1 a ${max[difficulty.name]}',
+        reason: difficulty.name,
+      );
+    }
+  });
+
   test('cada jogo tem id único, ilustração e conta erros ou jogadas', () {
     final ids = gameRegistry.map((g) => g.id).toList();
     expect(ids.toSet().length, ids.length);

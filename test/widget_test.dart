@@ -36,6 +36,10 @@ void main() {
   }
 
   testWidgets('Home lista os jogos do registry', (tester) async {
+    // tela alta: a grade é preguiçosa e só constrói o que cabe
+    tester.view.physicalSize = const Size(800, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(app());
 
     for (final game in gameRegistry) {

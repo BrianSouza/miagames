@@ -42,6 +42,20 @@ void main() {
         .toList();
   }
 
+  // Imagens e fontes carregadas pelo JS (e não pelo HTML) não aparecem ao seguir o
+  // HTML: por isso, toda pasta de assets/games que tenha arquivos precisa estar declarada.
+  test('toda pasta de assets/games com arquivos está declarada', () {
+    final dirs = Directory('assets/games')
+        .listSync(recursive: true)
+        .whereType<File>()
+        .map((f) => f.path.substring(0, f.path.lastIndexOf('/') + 1))
+        .toSet();
+    expect(dirs.length, greaterThan(4));
+    for (final dir in dirs) {
+      expect(declared, contains(dir), reason: 'declare $dir em flutter.assets');
+    }
+  });
+
   for (final game in gameRegistry) {
     test(
       '${game.id}: todos os arquivos que o jogo carrega estão declarados',

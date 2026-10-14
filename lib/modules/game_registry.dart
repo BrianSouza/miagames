@@ -44,6 +44,28 @@ final List<GameModule> gameRegistry = [
       GameDifficulty.hard: 'Letras e números até 50',
     },
   ),
+  const GameModule(
+    id: 'how-many',
+    displayName: 'Quantos tem?',
+    iconAsset: 'assets/images/how_many.svg',
+    accentColor: Color(0xFFFF9F43),
+    ageRange: [3, 6],
+    skills: ['Contar', 'Números'],
+    difficulties: [
+      GameDifficulty.easy,
+      GameDifficulty.medium,
+      GameDifficulty.hard,
+    ],
+    assetPath: 'assets/games/how-many/index.html',
+    scoreLabel: 'erros',
+    scoreLabelSingular: 'erro',
+    // Mantenha em sincronia com `max` em how-many-logic.js
+    difficultyHints: {
+      GameDifficulty.easy: 'Contar de 1 a 5',
+      GameDifficulty.medium: 'Contar de 1 a 10',
+      GameDifficulty.hard: 'Contar de 1 a 20',
+    },
+  ),
   // Próximos jogos:
   // GameModule(id: 'number-puzzle', displayName: 'Quebra-Cabeça', ...)
   // GameModule(id: 'color-match',   displayName: 'Mistura de Cores', ...)

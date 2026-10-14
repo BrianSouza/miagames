@@ -7,11 +7,11 @@
 (function (root, factory) {
   'use strict';
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory(require('../_shared/symbols.js'), require('../_shared/game-utils.js'));
+    module.exports = factory(require('../_shared/symbols.js'), require('../_shared/quiz.js'));
   } else {
-    root.WhichLetterLogic = factory(root.GameSymbols, root.GameUtils);
+    root.WhichLetterLogic = factory(root.GameSymbols, root.GameQuiz);
   }
-})(this, function (Symbols, Utils) {
+})(this, function (Symbols, Quiz) {
   'use strict';
 
   // options: quantas figuras aparecem. maxNumber: null = só letras; senão entram
@@ -24,12 +24,6 @@
 
   /** Fração das rodadas que perguntam um número; o resto são letras (alfabetização) */
   var NUMBER_SHARE = 0.4;
-
-  /** Pausa depois de um acerto, para a criança curtir antes da próxima rodada */
-  var ADVANCE_DELAY_MS = 1500;
-
-  /** Depois de tantos erros na mesma rodada, a resposta certa "respira" como dica */
-  var HINT_AFTER_MISSES = 2;
 
   function configFor(difficulty) {
     return DIFFICULTY[difficulty] || DIFFICULTY.easy;
@@ -63,125 +57,40 @@
     return Symbols.shuffle([answer].concat(distractors), random);
   }
 
-  /** Cria uma partida. `round` identifica a partida (ver next) */
+  /** Cria uma partida. `round` identifica a partida (ver Quiz.next) */
   function createGame(difficulty, options) {
     var opts = options || {};
     var key = DIFFICULTY[difficulty] ? difficulty : 'easy';
     var cfg = DIFFICULTY[key];
 
     var rounds = pickAnswers(cfg, opts.random).map(function (answer) {
-      return { answer: answer, options: pickOptions(answer, cfg, opts.random) };
+      var choices = pickOptions(answer, cfg, opts.random);
+      return {
+        answer: answer,
+        options: choices,
+        answerKey: answer.symbol,
+        optionKeys: choices.map(function (o) { return o.symbol; }),
+      };
     });
-
-    return {
-      difficulty: key,
-      rounds: rounds,
-      total: rounds.length,
-      index: 0,
-      phase: 'asking',       // asking | celebrating | completed
-      misses: 0,             // erros na rodada atual
-      eliminated: [],        // figuras erradas já tocadas nesta rodada
-      errors: 0,             // erros na partida toda (vira "moves" no Flutter)
-      firstTry: 0,           // rodadas acertadas de primeira
-      solved: 0,
-      startedAt: null,       // primeiro toque — o tempo não corre antes disso
-      completedAt: null,
-      round: (opts.previousRound || 0) + 1,
-    };
-  }
-
-  function currentRound(state) {
-    return state.rounds[state.index];
-  }
-
-  /**
-   * A criança tocou numa figura. Devolve { state, result } com result:
-   * 'correct' | 'wrong' | null (toque ignorado: fora da vez ou figura já eliminada).
-   */
-  function answer(state, symbol, now) {
-    if (state.phase !== 'asking') return { state: state, result: null };
-    var round = currentRound(state);
-    if (state.eliminated.indexOf(symbol) !== -1) return { state: state, result: null };
-    if (!round.options.some(function (o) { return o.symbol === symbol; })) {
-      return { state: state, result: null };
-    }
-
-    var startedAt = state.startedAt === null ? now : state.startedAt;
-
-    if (symbol !== round.answer.symbol) {
-      return {
-        state: Object.assign({}, state, {
-          misses: state.misses + 1,
-          errors: state.errors + 1,
-          eliminated: state.eliminated.concat([symbol]),
-          startedAt: startedAt,
-        }),
-        result: 'wrong',
-      };
-    }
-
-    return {
-      state: Object.assign({}, state, {
-        phase: 'celebrating',
-        solved: state.solved + 1,
-        firstTry: state.firstTry + (state.misses === 0 ? 1 : 0),
-        startedAt: startedAt,
-      }),
-      result: 'correct',
-    };
-  }
-
-  /** Depois de HINT_AFTER_MISSES erros seguidos na rodada, a resposta certa pulsa */
-  function shouldHint(state) {
-    return state.phase === 'asking' && state.misses >= HINT_AFTER_MISSES;
-  }
-
-  /**
-   * Passa para a próxima rodada (ou termina). `round` é a rodada em que a pausa foi
-   * agendada: se o jogo foi reiniciado no meio, nada muda.
-   * Devolve { state, result } com result: 'next' | 'complete' | null.
-   */
-  function next(state, round, now) {
-    if (round !== state.round || state.phase !== 'celebrating') {
-      return { state: state, result: null };
-    }
-    if (state.index + 1 >= state.total) {
-      return {
-        state: Object.assign({}, state, { phase: 'completed', completedAt: now }),
-        result: 'complete',
-      };
-    }
-    return {
-      state: Object.assign({}, state, {
-        phase: 'asking',
-        index: state.index + 1,
-        misses: 0,
-        eliminated: [],
-      }),
-      result: 'next',
-    };
-  }
-
-  function calcStars(state) {
-    return Utils.starsForAccuracy(state.firstTry, state.total);
+    return Quiz.createState(key, rounds, opts.previousRound);
   }
 
   return {
     DIFFICULTY: DIFFICULTY,
     NUMBER_SHARE: NUMBER_SHARE,
-    ADVANCE_DELAY_MS: ADVANCE_DELAY_MS,
-    HINT_AFTER_MISSES: HINT_AFTER_MISSES,
+    ADVANCE_DELAY_MS: Quiz.ADVANCE_DELAY_MS,
+    HINT_AFTER_MISSES: Quiz.HINT_AFTER_MISSES,
     configFor: configFor,
     promptFor: promptFor,
     pickAnswers: pickAnswers,
     pickOptions: pickOptions,
     createGame: createGame,
-    currentRound: currentRound,
-    answer: answer,
-    shouldHint: shouldHint,
-    next: next,
-    calcStars: calcStars,
-    isNewRecord: Utils.isNewRecord,
-    elapsedMs: Utils.elapsedMs,
+    currentRound: Quiz.currentRound,
+    answer: Quiz.answer,
+    shouldHint: Quiz.shouldHint,
+    next: Quiz.next,
+    calcStars: Quiz.calcStars,
+    isNewRecord: Quiz.isNewRecord,
+    elapsedMs: Quiz.elapsedMs,
   };
 });

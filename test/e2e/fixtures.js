@@ -10,7 +10,10 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { test: base, expect } = require('@playwright/test');
 
-const WhichLetterLogic = require('../../assets/games/which-letter/which-letter-logic.js');
+const LOGICS = {
+  'which-letter': require('../../assets/games/which-letter/which-letter-logic.js'),
+  'how-many': require('../../assets/games/how-many/how-many-logic.js'),
+};
 
 const gameUrl = (id) =>
   pathToFileURL(path.join(__dirname, `../../assets/games/${id}/index.html`)).href;
@@ -145,15 +148,19 @@ class MemoryGame extends Game {
   }
 }
 
-/** "Qual é a letra?": sabe a resposta certa porque o sorteio usa a mesma semente que o Node */
-class WhichLetterGame extends Game {
-  constructor(page, problems) {
-    super(page, problems, 'which-letter');
+/**
+ * Jogos de responder (Qual é a letra?, Quantos tem?...): sabem a resposta certa de
+ * cada rodada porque o sorteio da página usa a mesma semente que o Node.
+ */
+class QuizGame extends Game {
+  constructor(page, problems, id) {
+    super(page, problems, id);
+    this.logic = LOGICS[id];
   }
 
   async open({ difficulty = 'easy', seed = 1, ...rest } = {}) {
     await super.open({ difficulty, seed, ...rest });
-    this.plan = WhichLetterLogic.createGame(difficulty, { random: prng(seed) });
+    this.plan = this.logic.createGame(difficulty, { random: prng(seed) });
     return this;
   }
 
@@ -175,14 +182,15 @@ class WhichLetterGame extends Game {
     return this.plan.rounds[await this.solvedCount()];
   }
 
+  /** A chave da figura certa da rodada atual ("B", "7"...) */
   async correctSymbol() {
-    return (await this.currentRound()).answer.symbol;
+    return (await this.currentRound()).answerKey;
   }
 
-  /** Uma figura errada da rodada atual (a n-ésima) */
+  /** A chave de uma figura errada da rodada atual (a n-ésima) */
   async wrongSymbol(n = 0) {
     const round = await this.currentRound();
-    return round.options.filter((o) => o.symbol !== round.answer.symbol)[n].symbol;
+    return round.optionKeys.filter((k) => k !== round.answerKey)[n];
   }
 
   /**
@@ -198,9 +206,18 @@ class WhichLetterGame extends Game {
   async solve() {
     for (let i = 0; i < this.plan.total; i++) await this.answerRight();
   }
+
+  /** Acerta as rodadas até chegar à de índice `index` (0 = a primeira) */
+  async goToRound(index) {
+    while ((await this.solvedCount()) < index) await this.answerRight();
+  }
 }
 
-const CLASSES = { memory: MemoryGame, 'which-letter': WhichLetterGame };
+const CLASSES = {
+  memory: (page, problems) => new MemoryGame(page, problems),
+  'which-letter': (page, problems) => new QuizGame(page, problems, 'which-letter'),
+  'how-many': (page, problems) => new QuizGame(page, problems, 'how-many'),
+};
 
 const test = base.extend({
   // Qual jogo abrir: `test.use({ gameId: 'which-letter' })` (o padrão é a Memória)
@@ -214,7 +231,7 @@ const test = base.extend({
       if (m.type() === 'error') problems.push(`console.error: ${m.text()}`);
     });
 
-    await use(new CLASSES[gameId](page, problems));
+    await use(CLASSES[gameId](page, problems));
 
     expect(problems, 'erros de página ou recursos que não carregaram').toEqual([]);
   },

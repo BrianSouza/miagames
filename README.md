@@ -40,9 +40,16 @@ miagames/
 │   ├── kit.css                    ← Reset, fonte e cores
 │   ├── bridge.js                  ← Ponte com o Flutter (INIT, voz, fim de jogo, voltar)
 │   ├── hold-exit.js               ← Segurar para sair
+│   ├── kit.js                     ← Cabeçalho: voltar, estrelas de progresso, ouvir de novo, reiniciar
+│   ├── result.js  confetti.js     ← Tela de parabéns (Mia, estrelas, confete)
+│   ├── game-utils.js              ← Contas comuns: encaixe na tela, estrelas, recorde, tempo
+│   ├── quiz.js                    ← Motor dos jogos de responder (rodadas, erros, dica, estrelas)
+│   ├── quiz-ui.js                 ← Tela dos jogos de responder (ponte, rodadas, retorno)
 │   ├── sounds.js                  ← Efeitos sonoros sintetizados (Web Audio)
 │   ├── symbols.js                 ← Letras, números por extenso e símbolos que se confundem (testado no Node)
 │   └── fonts/                     ← Andika (fonte para alfabetização, licença OFL)
+├── assets/games/which-letter/     ← Qual é a letra? (index.html, which-letter-logic.js, game.js)
+├── assets/games/how-many/         ← Quantos tem? (+ img/ com os objetos)
 ├── assets/games/memory/           ← Jogo da Memória (mini-app web)
 │   ├── index.html
 │   ├── style.css
@@ -95,7 +102,35 @@ A Home, o seletor de dificuldade e a tela de jogo funcionam automaticamente.
 
 ---
 
-## 🎮 Jogo da Memória
+## 🎮 Os jogos
+
+| Jogo | O que a criança faz | Níveis |
+|------|---------------------|--------|
+| **Jogo da Memória** | Acha os pares de letras e números | 6, 8 e 10 pares; números até 9, 20 e 50 |
+| **Qual é a letra?** | A voz fala o nome e a criança toca na figura certa | 3 letras · 4 letras ou números até 20 · 6 letras ou números até 50 |
+| **Quantos tem?** | Conta os objetos (tocar em cada um fala o número) e escolhe quantos são | 1 a 5 · 1 a 10 · 1 a 20 |
+
+Os jogos de responder (todos menos a Memória) têm **8 rodadas**. As estrelas vêm dos acertos
+**de primeira**: 7 de 8 ou mais = 3 estrelas, 5 de 8 ou mais = 2, senão 1. A pontuação que vai
+para o Flutter (`moves`) é o **número de erros**, e a Área dos pais a chama de "erros"
+(na Memória, "jogadas"). Errar não tem castigo: a figura some de leve, a voz diz "Tente de novo!"
+e, depois de 2 erros na mesma rodada, a resposta certa "respira" e a pergunta se repete.
+
+### Qual é a letra?
+
+- A voz diz "Qual é a letra Bê?" (ou "Qual é o número treze?"); o alto-falante e a Mia repetem
+- As figuras de uma rodada são todas do mesmo tipo da resposta (letra com letras, número com números) e nunca parecidas com ela (12 e 21)
+- Nenhuma resposta se repete na partida; cerca de 60% letras e 40% números nos níveis com número
+
+### Quantos tem?
+
+- Objetos (estrela, bola, maçã, peixe, flor) em **fileiras de 5**, fáceis de contar de 5 em 5
+- Tocar num objeto fala o próximo número ("um", "dois"...) e mostra o número ao lado: **um objeto, um número**
+- A pergunta tem o gênero certo: "Quantas estrelas…", "Quantos peixes…"
+- Fora do fácil, uma das respostas é vizinha da certa (errar por um é o engano mais comum); as figuras vêm em ordem crescente
+- No difícil, metade das rodadas passa de 10 objetos
+
+### Jogo da Memória
 
 Pares de **letras e números**, para quem está na fase de alfabetização. Ao virar uma
 carta, a voz fala o **nome** da letra ("Bê", "Cê") ou do número ("três"); ao achar o par, ela
