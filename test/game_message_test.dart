@@ -15,13 +15,16 @@ void main() {
       expect(message, isA<Speak>().having((m) => m.text, 'text', 'Gato'));
     });
 
-    test('GAME_COMPLETE traz os dados da partida', () {
+    test('GAME_COMPLETE traz estrelas, jogadas e tempo', () {
       final message = GameMessage.parse(
-        '{"type":"GAME_COMPLETE","moves":7,"stars":3}',
+        '{"type":"GAME_COMPLETE","moves":7,"stars":3,"timeSeconds":42}',
       );
       expect(
         message,
-        isA<GameComplete>().having((m) => m.data['stars'], 'stars', 3),
+        isA<GameComplete>()
+            .having((m) => m.stars, 'stars', 3)
+            .having((m) => m.moves, 'moves', 7)
+            .having((m) => m.timeSeconds, 'timeSeconds', 42),
       );
     });
 
@@ -33,6 +36,9 @@ void main() {
         '{"type":"SPEAK"}',
         '{"type":"SPEAK","text":"   "}',
         '{"type":"SPEAK","text":42}',
+        '{"type":"GAME_COMPLETE","stars":5,"moves":7,"timeSeconds":1}',
+        '{"type":"GAME_COMPLETE","stars":2,"moves":-1,"timeSeconds":1}',
+        '{"type":"GAME_COMPLETE","stars":"3","moves":7,"timeSeconds":1}',
       ]) {
         expect(GameMessage.parse(raw), isNull, reason: raw);
       }

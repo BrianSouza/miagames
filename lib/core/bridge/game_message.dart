@@ -21,7 +21,7 @@ sealed class GameMessage {
         final String text when text.trim().isNotEmpty => Speak(text),
         _ => null,
       },
-      'GAME_COMPLETE' => GameComplete(data),
+      'GAME_COMPLETE' => GameComplete.fromJson(data),
       _ => null,
     };
   }
@@ -39,8 +39,26 @@ class Speak extends GameMessage {
   final String text;
 }
 
-/// Partida concluída — base para salvar progresso no futuro.
+/// Partida concluída. Só os números que o Flutter salva; jogo e dificuldade
+/// vêm da própria tela, não da mensagem.
 class GameComplete extends GameMessage {
-  const GameComplete(this.data);
-  final Map<String, dynamic> data;
+  const GameComplete({
+    required this.stars,
+    required this.moves,
+    required this.timeSeconds,
+  });
+
+  final int stars;
+  final int moves;
+  final int timeSeconds;
+
+  static GameComplete? fromJson(Map<String, dynamic> data) {
+    final stars = data['stars'];
+    final moves = data['moves'];
+    final time = data['timeSeconds'];
+    if (stars is! int || stars < 1 || stars > 3) return null;
+    if (moves is! int || moves < 0) return null;
+    if (time is! int || time < 0) return null;
+    return GameComplete(stars: stars, moves: moves, timeSeconds: time);
+  }
 }

@@ -1,18 +1,39 @@
 import 'package:flutter/material.dart';
 import '../core/audio/narrator.dart';
+import '../core/storage/progress_store.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_spacing.dart';
+import '../core/widgets/game_tile.dart';
+import '../core/widgets/mia_avatar.dart';
+import '../core/widgets/parental_gate.dart';
 import '../modules/game_module.dart';
 import '../modules/game_registry.dart';
+import 'difficulty_sheet.dart';
 import 'game_screen.dart';
+import 'parents_screen.dart';
 
-/// Tela inicial: lista os jogos do [gameRegistry] e abre o seletor de
-/// dificuldade. Nomes de jogos e dificuldades são falados ao toque,
-/// para quem ainda não sabe ler.
+/// O que a Mia diz quando a criança toca nela
+const miaGreeting = 'Oi! Vamos brincar?';
+
+/// Tela inicial: a Mia acena e os jogos do [gameRegistry] são cartões grandes.
+/// Nomes de jogos e dificuldades são falados ao toque, para quem ainda não
+/// sabe ler.
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key, required this.narrator});
+  const HomeScreen({super.key, required this.narrator, required this.store});
 
   final Narrator narrator;
+  final ProgressStore store;
+
+  /// A Área dos pais fica atrás de uma pergunta que crianças pequenas
+  /// não conseguem responder.
+  Future<void> _openParentsArea(BuildContext context) async {
+    final allowed = await showParentalGate(context);
+    if (!allowed || !context.mounted) return;
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (_) => ParentsScreen(store: store)),
+    );
+  }
 
   void _showDifficultyPicker(BuildContext context, GameModule game) {
     narrator.speak(game.displayName);
@@ -27,16 +48,21 @@ class HomeScreen extends StatelessWidget {
           top: Radius.circular(AppSpacing.radiusXl),
         ),
       ),
-      builder: (ctx) => _DifficultySheet(
+      builder: (ctx) => DifficultySheet(
         game: game,
+        store: store,
         onSelect: (diff) {
           narrator.speak(diff.label);
           Navigator.pop(ctx);
           Navigator.push<void>(
             context,
             MaterialPageRoute(
-              builder: (_) =>
-                  GameScreen(game: game, difficulty: diff, narrator: narrator),
+              builder: (_) => GameScreen(
+                game: game,
+                difficulty: diff,
+                narrator: narrator,
+                store: store,
+              ),
             ),
           );
         },
@@ -49,25 +75,159 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _Header(),
-            Expanded(
-              child: GridView.builder(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: AppSpacing.md,
-                  mainAxisSpacing: AppSpacing.md,
-                  // Altura fixa: com proporção, o card ficava baixo demais
-                  // para o conteúdo em telas estreitas (320px)
-                  mainAxisExtent: 220,
+        child: LayoutBuilder(
+          builder: (context, box) {
+            // Celular e tablet em pé: 2 colunas; telas largas (paisagem): 4
+            final columns = box.maxWidth >= 840 ? 4 : 2;
+            final narrow = box.maxWidth < 400;
+            return CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: _Header(
+                    narrow: narrow,
+                    onGreeting: () => narrator.speak(miaGreeting),
+                    onParentsArea: () => _openParentsArea(context),
+                  ),
                 ),
-                itemCount: gameRegistry.length,
-                itemBuilder: (ctx, i) => _GameCard(
-                  game: gameRegistry[i],
-                  onTap: () => _showDifficultyPicker(context, gameRegistry[i]),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    AppSpacing.sm,
+                    AppSpacing.md,
+                    AppSpacing.xl,
+                  ),
+                  sliver: SliverGrid(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: columns,
+                      crossAxisSpacing: AppSpacing.md,
+                      mainAxisSpacing: AppSpacing.lg,
+                      childAspectRatio: narrow ? 0.78 : 0.85,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (ctx, i) => GameTile(
+                        game: gameRegistry[i],
+                        onTap: () =>
+                            _showDifficultyPicker(context, gameRegistry[i]),
+                      ),
+                      childCount: gameRegistry.length,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.narrow,
+    required this.onGreeting,
+    required this.onParentsArea,
+  });
+
+  final bool narrow;
+  final VoidCallback onGreeting;
+  final VoidCallback onParentsArea;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.xs,
+        0,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          GestureDetector(
+            onTap: onGreeting,
+            child: MiaPopIn(
+              child: MiaAvatar(pose: MiaPose.wave, size: narrow ? 96 : 128),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: _SpeechBubble(onTap: onGreeting),
+            ),
+          ),
+          // Discreta e longe do dedo da criança; o bloqueio parental protege
+          Align(
+            alignment: Alignment.topRight,
+            child: IconButton(
+              onPressed: onParentsArea,
+              tooltip: 'Área dos pais',
+              iconSize: 26,
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              color: AppColors.textSecond,
+              icon: const Icon(Icons.settings_rounded),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Balão de fala da Mia. Tocar nele repete a saudação em voz alta.
+class _SpeechBubble extends StatelessWidget {
+  const _SpeechBubble({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: miaGreeting,
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Row(
+          children: [
+            CustomPaint(
+              size: const Size(12, 20),
+              painter: _BubbleTailPainter(),
+            ),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm + 2,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                  boxShadow: const [
+                    BoxShadow(color: Color(0x1A000000), offset: Offset(0, 3)),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        miaGreeting,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    const Icon(
+                      Icons.volume_up_rounded,
+                      color: AppColors.textSecond,
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -78,217 +238,17 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class _Header extends StatelessWidget {
+class _BubbleTailPainter extends CustomPainter {
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.lg,
-        AppSpacing.lg,
-        AppSpacing.sm,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '🎮 MiaGames',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Escolha um jogo para começar!',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecond),
-          ),
-        ],
-      ),
-    );
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(size.width, 0)
+      ..lineTo(0, size.height / 2)
+      ..lineTo(size.width, size.height)
+      ..close();
+    canvas.drawPath(path, Paint()..color = Colors.white);
   }
-}
-
-class _GameCard extends StatelessWidget {
-  final GameModule game;
-  final VoidCallback onTap;
-
-  const _GameCard({required this.game, required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: game.displayName,
-      excludeSemantics: true,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-            boxShadow: [
-              BoxShadow(
-                color: game.accentColor.withValues(alpha: 0.25),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: game.accentColor.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(game.icon, style: const TextStyle(fontSize: 40)),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-                child: Text(
-                  game.displayName,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Wrap(
-                spacing: 4,
-                runSpacing: 4,
-                alignment: WrapAlignment.center,
-                children: game.skills.take(2).map((skill) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: game.accentColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                    ),
-                    child: Text(
-                      skill,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        // texto escuro: a cor do jogo sobre o fundo claro dela não tem contraste
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DifficultySheet extends StatelessWidget {
-  final GameModule game;
-  final void Function(GameDifficulty) onSelect;
-
-  const _DifficultySheet({required this.game, required this.onSelect});
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppColors.textLight,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            '${game.icon}  ${game.displayName}',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Escolha a dificuldade:',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecond),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          ...game.difficulties.map(
-            (diff) => Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => onSelect(diff),
-                  style: OutlinedButton.styleFrom(
-                    // Altura mínima de toque, mas pode crescer se o texto quebrar
-                    minimumSize: const Size.fromHeight(AppSpacing.touchTarget),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: AppSpacing.sm,
-                    ),
-                    side: BorderSide(color: game.accentColor, width: 2),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(diff.stars, style: const TextStyle(fontSize: 18)),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              diff.label,
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
-                                  ),
-                            ),
-                            Text(
-                              diff.description,
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(color: AppColors.textSecond),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-        ],
-      ),
-    );
-  }
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

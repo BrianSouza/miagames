@@ -1,0 +1,43 @@
+/* Só o que é do "Qual sílaba falta?": o desenho e a palavra com a lacuna.
+   O arranjo da tela é do kit (.board-layout). */
+.picture-area {
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Tamanhos (--pic-size, --word-size): calculados no jogo, pela largura E altura da área */
+.picture {
+  width: var(--pic-size, 160px);
+  height: var(--pic-size, 160px);
+  flex-shrink: 0;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.word {
+  display: flex;
+  justify-content: center;
+  gap: .25em;
+  font-family: 'Andika', 'Trebuchet MS', 'Verdana', sans-serif;
+  font-weight: 700;
+  font-size: var(--word-size, 48px);
+  line-height: 1.15;
+  color: #1565C0;   /* mesmas cores das letras do Jogo da Memória */
+}
+.syl {
+  padding: 0 .18em;
+  border-radius: .25em;
+  background: var(--surface);
+  box-shadow: var(--toy-shadow);
+}
+
+/* A sílaba que falta: uma caixa tracejada. Ao acertar, a sílaba entra nela e "pula". */
+.syl.blank {
+  min-width: 1.5em;
+  background: transparent;
+  box-shadow: none;
+  border: .07em dashed #90A4AE;
+  color: #90A4AE;
+  text-align: center;
+}
+.syl.filled { background: #EAFFF4; color: #1B7F46; }

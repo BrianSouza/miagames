@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'core/audio/narrator.dart';
+import 'core/storage/progress_store.dart';
 import 'core/theme/app_theme.dart';
 import 'screens/home_screen.dart';
 
 class MiaGamesApp extends StatelessWidget {
-  const MiaGamesApp({super.key, required this.narrator});
+  const MiaGamesApp({super.key, required this.narrator, required this.store});
 
-  /// Injetado para que os testes usem um narrador falso, sem motor de voz.
+  /// Injetados para que os testes usem um narrador falso (sem motor de voz)
+  /// e um armazenamento em memória.
   final Narrator narrator;
+  final ProgressStore store;
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +18,7 @@ class MiaGamesApp extends StatelessWidget {
       title: 'MiaGames',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: HomeScreen(narrator: narrator),
+      home: HomeScreen(narrator: narrator, store: store),
     );
   }
 }

@@ -1,0 +1,12 @@
+{
+  "name": "miagames-e2e",
+  "private": true,
+  "description": "Testes de navegador (Playwright) dos mini-jogos em assets/games. O app em si é Flutter — este package.json existe só para os testes.",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}

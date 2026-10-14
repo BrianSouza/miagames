@@ -10,32 +10,32 @@
 (function (root, factory) {
   'use strict';
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory();
+    module.exports = factory(require('../_shared/symbols.js'), require('../_shared/game-utils.js'));
   } else {
-    root.MemoryLogic = factory();
+    root.MemoryLogic = factory(root.GameSymbols, root.GameUtils);
   }
-})(this, function () {
+})(this, function (Symbols, Utils) {
   'use strict';
 
+  // maxNumber: os números sorteados vão de 0 até este valor. No fácil, só
+  // algarismos soltos; nos níveis seguintes entram os números de dois algarismos.
   var DIFFICULTY = {
-    easy:   { pairs: 6,  cols: 3 },
-    medium: { pairs: 8,  cols: 4 },
-    hard:   { pairs: 10, cols: 4 },
+    easy:   { pairs: 6,  cols: 3, maxNumber: 9 },
+    medium: { pairs: 8,  cols: 4, maxNumber: 20 },
+    hard:   { pairs: 10, cols: 4, maxNumber: 50 },
   };
 
-  // 10 animais (suficiente para o nível mais difícil), com o nome falado
-  var ANIMALS = [
-    { emoji: '🐶', name: 'Cachorro' },
-    { emoji: '🐱', name: 'Gato' },
-    { emoji: '🐭', name: 'Rato' },
-    { emoji: '🐰', name: 'Coelho' },
-    { emoji: '🦊', name: 'Raposa' },
-    { emoji: '🐻', name: 'Urso' },
-    { emoji: '🐼', name: 'Panda' },
-    { emoji: '🐨', name: 'Coala' },
-    { emoji: '🐯', name: 'Tigre' },
-    { emoji: '🦁', name: 'Leão' },
-  ];
+  var LETTERS = Symbols.LETTERS;
+  var numbersUpTo = Symbols.numbersUpTo;
+  var numberName = Symbols.numberName;
+  var LOOKALIKES = Symbols.LOOKALIKES;
+  var looksAlike = Symbols.looksAlike;
+  var findSymbol = Symbols.findSymbol;
+  var labelFor = Symbols.labelFor;
+  var shuffle = Symbols.shuffle;
+
+  /** Fração de pares que são números; o resto são letras (foco na alfabetização) */
+  var NUMBER_SHARE = 0.4;
 
   /** Tempo (ms) que as duas cartas ficam visíveis antes da verificação */
   var CHECK_DELAY_MS = 800;
@@ -44,15 +44,26 @@
     return DIFFICULTY[difficulty] || DIFFICULTY.easy;
   }
 
-  /** Fisher-Yates — distribuição uniforme, não altera o array original */
-  function shuffle(arr, random) {
-    var rnd = random || Math.random;
-    var a = arr.slice();
-    for (var i = a.length - 1; i > 0; i--) {
-      var j = Math.floor(rnd() * (i + 1));
-      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
-    }
-    return a;
+  /**
+   * Escolhe os símbolos de uma partida: uma mistura de letras e números (cerca de
+   * 60% letras), sem repetir símbolo e sem juntar símbolos que se confundem.
+   * Os números vão de 0 até `maxNumber`.
+   */
+  function pickSymbols(pairs, random, maxNumber) {
+    var numberCount = Math.round(pairs * NUMBER_SHARE);
+    var letters = shuffle(LETTERS, random).slice(0, pairs - numberCount);
+
+    var chosen = letters.slice();
+    var numbers = [];
+    shuffle(numbersUpTo(maxNumber === undefined ? 9 : maxNumber), random).forEach(function (n) {
+      if (numbers.length >= numberCount) return;
+      var confusable = chosen.some(function (c) { return looksAlike(c.symbol, n.symbol); });
+      if (confusable) return;
+      numbers.push(n);
+      chosen.push(n);
+    });
+
+    return letters.concat(numbers);
   }
 
   /**
@@ -63,12 +74,20 @@
     var opts = options || {};
     var key = DIFFICULTY[difficulty] ? difficulty : 'easy';
     var cfg = DIFFICULTY[key];
-    var animals = shuffle(ANIMALS, opts.random).slice(0, cfg.pairs);
 
     var cards = [];
-    animals.forEach(function (animal, pairId) {
-      cards.push({ id: pairId * 2,     emoji: animal.emoji, name: animal.name, pairId: pairId, state: 'hidden' });
-      cards.push({ id: pairId * 2 + 1, emoji: animal.emoji, name: animal.name, pairId: pairId, state: 'hidden' });
+    pickSymbols(cfg.pairs, opts.random, cfg.maxNumber).forEach(function (item, pairId) {
+      [0, 1].forEach(function (copy) {
+        cards.push({
+          id: pairId * 2 + copy,
+          symbol: item.symbol,
+          kind: item.kind,
+          name: item.name,
+          label: labelFor(item),
+          pairId: pairId,
+          state: 'hidden',
+        });
+      });
     });
 
     return {
@@ -163,26 +182,19 @@
     return 1;
   }
 
-  /** Milissegundos desde o primeiro toque (0 antes de começar) */
-  function elapsedMs(state, now) {
-    if (state.startedAt === null) return 0;
-    var end = state.completedAt !== null ? state.completedAt : now;
-    return Math.max(0, end - state.startedAt);
-  }
-
-  /**
-   * Lado da carta (px) para o grid caber na área disponível, considerando
-   * largura E altura — em tablets e telas baixas a altura é o limite.
-   */
-  function cardSize(width, height, cols, rows, gap) {
-    var byWidth = (width - gap * (cols - 1)) / cols;
-    var byHeight = (height - gap * (rows - 1)) / rows;
-    return Math.max(0, Math.floor(Math.min(byWidth, byHeight)));
-  }
+  var isNewRecord = Utils.isNewRecord;
+  var elapsedMs = Utils.elapsedMs;
+  var cardSize = Utils.fitSquare;
 
   return {
     DIFFICULTY: DIFFICULTY,
-    ANIMALS: ANIMALS,
+    LETTERS: LETTERS,
+    numbersUpTo: numbersUpTo,
+    numberName: numberName,
+    looksAlike: looksAlike,
+    findSymbol: findSymbol,
+    LOOKALIKES: LOOKALIKES,
+    pickSymbols: pickSymbols,
     CHECK_DELAY_MS: CHECK_DELAY_MS,
     configFor: configFor,
     shuffle: shuffle,
@@ -190,6 +202,7 @@
     flip: flip,
     resolve: resolve,
     calcStars: calcStars,
+    isNewRecord: isNewRecord,
     elapsedMs: elapsedMs,
     cardSize: cardSize,
   };

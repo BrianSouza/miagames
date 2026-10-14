@@ -4,58 +4,38 @@
   // Camada de apresentação do Jogo da Memória: DOM, timers e ponte com o Flutter.
   // As regras ficam em memory-logic.js (testado com `node --test`).
   var Logic = window.MemoryLogic;
+  var Sounds = window.GameSounds;
+  var Bridge = window.GameBridge;
 
   var BOARD_GAP = 10;
-  var EXIT_HOLD_MS = 700;   // segurar o voltar por este tempo para sair
-  var HINT_MS = 2000;
 
   // ── Estado ────────────────────────────────────────────────────────────────────
   var state = null;
   var checkTimer = null;    // verificação agendada das duas cartas abertas
-  var clockTimer = null;    // atualiza o cronômetro na tela
-  var hintTimer = null;
+  var best = null;          // recorde salvo pelo Flutter: { stars, moves } ou null
 
   // ── DOM refs ──────────────────────────────────────────────────────────────────
   var boardContainerEl = document.getElementById('board-container');
   var boardEl          = document.getElementById('board');
   var matchesEl        = document.getElementById('matches');
-  var timerEl          = document.getElementById('timer');
   var movesEl          = document.getElementById('moves');
-  var hintEl           = document.getElementById('exit-hint');
-  var resultModal      = document.getElementById('result-modal');
-  var starsEl          = document.getElementById('stars');
-  var resultStatsEl    = document.getElementById('result-stats');
-  var backBtn          = document.getElementById('btn-back');
 
   // ── Ponte com o Flutter ───────────────────────────────────────────────────────
-  /**
-   * Chamado pelo Flutter quando a página termina de carregar:
-   *   window.handleFlutterMessage({"type":"INIT","difficulty":"easy","gameId":"memory"})
-   */
-  window.handleFlutterMessage = function (data) {
-    if (data && data.type === 'INIT') {
-      startGame(data.difficulty);
-    }
-  };
+  // INIT: {"type":"INIT","difficulty":"easy","gameId":"memory","sound":true,
+  //        "best":{"stars":2,"moves":9}}
+  Bridge.onInit(function (data) {
+    Sounds.setEnabled(data.sound !== false);
+    best = data.best || null;
+    startGame(data.difficulty);
+  });
 
-  function sendToFlutter(type, payload) {
-    if (!window.MiaGamesFlutter) return;
-    window.MiaGamesFlutter.postMessage(JSON.stringify(Object.assign({ type: type }, payload)));
-  }
+  var speak = Bridge.speak;
 
-  /** A voz do navegador não funciona na WebView do Android — quem fala é o Flutter */
-  function speak(text) {
-    sendToFlutter('SPEAK', { text: text });
-  }
+  var header = window.GameKit.createHeader({ onReset: resetGame });
+  var GameResult = window.GameResult;
+  GameResult.init({ onAgain: resetGame, onHome: Bridge.back });
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
-  function fmtTime(ms) {
-    var s = Math.floor(ms / 1000);
-    var m = Math.floor(s / 60).toString().padStart(2, '0');
-    var sec = (s % 60).toString().padStart(2, '0');
-    return m + ':' + sec;
-  }
-
   function findCard(id) {
     return state.cards.find(function (c) { return c.id === id; });
   }
@@ -63,7 +43,6 @@
   // ── Ciclo de vida ─────────────────────────────────────────────────────────────
   function startGame(difficulty) {
     clearTimeout(checkTimer);   // uma verificação pendente não pode atingir o jogo novo
-    clearInterval(clockTimer);
     checkTimer = null;
 
     var previousRound = state ? state.round : 0;
@@ -71,11 +50,11 @@
       previousRound: previousRound,
     });
 
-    resultModal.classList.add('hidden');
+    GameResult.hide();
+    header.setTotal(state.totalPairs);
     renderBoard();
     layoutBoard();
     updateStats();
-    timerEl.textContent = fmtTime(0);
   }
 
   function resetGame() {
@@ -93,7 +72,10 @@
       el.innerHTML =
         '<div class="card-inner">' +
           '<div class="card-front" aria-hidden="true">?</div>' +
-          '<div class="card-back" aria-hidden="true">' + card.emoji + '</div>' +
+          '<div class="card-back" data-kind="' + card.kind + '" aria-hidden="true">' +
+            '<span class="glyph" data-symbol="' + card.symbol + '" data-len="' + card.symbol.length + '">' +
+              card.symbol + '</span>' +
+          '</div>' +
         '</div>';
       el.addEventListener('click', function () { onCardClick(card.id); });
       boardEl.appendChild(el);
@@ -107,7 +89,7 @@
     if (!card || !el) return;
     el.className = 'card' + (card.state === 'matched' ? ' matched' : '');
     el.querySelector('.card-inner').classList.toggle('flipped', card.state !== 'hidden');
-    el.setAttribute('aria-label', card.state === 'hidden' ? 'Carta escondida' : card.name);
+    el.setAttribute('aria-label', card.state === 'hidden' ? 'Carta escondida' : card.label);
   }
 
   /** Ajusta o tamanho das cartas à largura E altura disponíveis */
@@ -126,9 +108,19 @@
     boardEl.style.setProperty('--card-size', size + 'px');
   }
 
+  // O que a criança vê são as estrelas; os números ficam para os leitores de tela
   function updateStats() {
     matchesEl.textContent = state.matches + '/' + state.totalPairs;
     movesEl.textContent = state.moves + (state.moves === 1 ? ' jogada' : ' jogadas');
+    header.setDone(state.matches);
+  }
+
+  /** Animação curta numa carta (pop ao acertar, shake ao errar) */
+  function animateCard(id, className) {
+    var el = boardEl.querySelector('[data-id="' + id + '"]');
+    if (!el) return;
+    el.classList.add(className);
+    setTimeout(function () { el.classList.remove(className); }, 450);
   }
 
   // ── Jogadas ───────────────────────────────────────────────────────────────────
@@ -136,14 +128,10 @@
     var next = Logic.flip(state, id, Date.now());
     if (next === state) return;   // toque ignorado
 
-    var startedNow = state.startedAt === null;
     state = next;
     refreshCard(id);
+    Sounds.play('flip');
     speak(findCard(id).name);
-
-    if (startedNow) {
-      clockTimer = setInterval(tickClock, 1000);
-    }
 
     if (state.phase === 'checking') {
       updateStats();
@@ -162,23 +150,36 @@
     pending.forEach(refreshCard);
     updateStats();
 
-    if (outcome.result === 'match') speak('Muito bem!');
+    if (outcome.result === 'mismatch') {
+      Sounds.play('mismatch');
+      pending.forEach(function (id) { animateCard(id, 'shake'); });
+    }
+    if (outcome.result === 'match' || outcome.result === 'complete') {
+      pending.forEach(function (id) { animateCard(id, 'pop'); });
+    }
+    if (outcome.result === 'match') {
+      Sounds.play('match');
+      // Repete o nome do par encontrado: reforça a letra/número aprendido
+      speak(findCard(pending[0]).name + '! Muito bem!');
+    }
     if (outcome.result === 'complete') endGame();
   }
 
   function endGame() {
-    clearInterval(clockTimer);
-
     var elapsed = Logic.elapsedMs(state, Date.now());
     var stars = Logic.calcStars(state);
+    var newRecord = Logic.isNewRecord(best, stars, state.moves);
 
-    timerEl.textContent = fmtTime(elapsed);
-    starsEl.textContent = '⭐'.repeat(stars);
-    resultStatsEl.textContent = state.moves + ' jogadas · ' + fmtTime(elapsed);
-    resultModal.classList.remove('hidden');
-    speak('Parabéns! Você encontrou todos os pares!');
+    GameResult.show(stars, newRecord);
+    Sounds.play('win');
+    speak(newRecord
+      ? 'Parabéns! Novo recorde!'
+      : 'Parabéns! Você encontrou todos os pares!');
 
-    sendToFlutter('GAME_COMPLETE', {
+    // O Flutter salva o recorde; aqui só atualizamos para o "Jogar novamente"
+    if (!best || newRecord) best = { stars: stars, moves: state.moves };
+
+    Bridge.complete({
       gameId:      'memory',
       difficulty:  state.difficulty,
       moves:       state.moves,
@@ -188,49 +189,7 @@
     });
   }
 
-  function tickClock() {
-    timerEl.textContent = fmtTime(Logic.elapsedMs(state, Date.now()));
-  }
-
-  // ── Voltar: segurar para sair ─────────────────────────────────────────────────
-  // Crianças pequenas tocam em tudo; um toque acidental não deve encerrar a
-  // partida. Um toque curto só mostra a dica para o adulto.
-  var holdTimer = null;
-  var exited = false;
-
-  function showExitHint() {
-    hintEl.classList.remove('hidden');
-    clearTimeout(hintTimer);
-    hintTimer = setTimeout(function () { hintEl.classList.add('hidden'); }, HINT_MS);
-  }
-
-  function cancelHold() {
-    clearTimeout(holdTimer);
-    holdTimer = null;
-  }
-
-  backBtn.addEventListener('pointerdown', function () {
-    exited = false;
-    cancelHold();
-    holdTimer = setTimeout(function () {
-      exited = true;
-      sendToFlutter('NAVIGATE_BACK');
-    }, EXIT_HOLD_MS);
-  });
-  backBtn.addEventListener('pointerup', cancelHold);
-  backBtn.addEventListener('pointercancel', cancelHold);
-  backBtn.addEventListener('pointerleave', cancelHold);
-  backBtn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
-  backBtn.addEventListener('click', function () {
-    if (!exited) showExitHint();
-  });
-
-  // ── Demais botões ─────────────────────────────────────────────────────────────
-  document.getElementById('btn-reset').addEventListener('click', resetGame);
-  document.getElementById('btn-play-again').addEventListener('click', resetGame);
-  document.getElementById('btn-home').addEventListener('click', function () {
-    sendToFlutter('NAVIGATE_BACK');
-  });
+  // ── Botões ────────────────────────────────────────────────────────────────────
   window.addEventListener('resize', layoutBoard);
 
 })();
