@@ -2,7 +2,10 @@
 // tela (celular pequeno, retrato, paisagem e tablet), sem rolar e sem se sobrepor.
 const { test, expect } = require('./fixtures');
 
-const QUIZ_GAMES = ['which-letter', 'how-many'];
+const QUIZ_GAMES = ['which-letter', 'how-many', 'missing-syllable'];
+
+// Jogos em que cada rodada tem um tamanho de tela diferente (palavras de 4 a 6 letras)
+const CHECK_EVERY_ROUND = new Set(['missing-syllable']);
 
 const VIEWPORTS = {
   'celular pequeno (320×568)': { width: 320, height: 568 },
@@ -30,6 +33,8 @@ async function checkLayout(game, viewport) {
   const mia = await game.page.locator('#mia').boundingBox();
   const options = await boxesOf(game.options());
   const objects = await boxesOf(game.page.locator('.obj')); // só no Quantos tem?
+  const picture = await boxesOf(game.page.locator('#picture')); // só no Qual sílaba falta?
+  const word = await boxesOf(game.page.locator('#word'));
   expect(options.length).toBeGreaterThanOrEqual(3);
 
   const inside = (box, what, minSize) => {
@@ -64,6 +69,20 @@ async function checkLayout(game, viewport) {
     }
   }
 
+  // o desenho e a palavra (Qual sílaba falta?): cabem, não se sobrepõem e a palavra é legível
+  for (const box of [...picture, ...word]) {
+    inside(box, 'desenho/palavra', 40);
+    for (const option of options) expect(overlaps(box, option), 'desenho/palavra em cima de uma resposta').toBe(false);
+  }
+  if (picture.length) {
+    expect(overlaps(picture[0], word[0]), 'desenho em cima da palavra').toBe(false);
+    expect(picture[0].width, 'desenho pequeno demais').toBeGreaterThanOrEqual(64);
+    const fontSize = await game.page.locator('.syl').first().evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
+    expect(fontSize, 'palavra pequena demais para ler').toBeGreaterThanOrEqual(28);
+    const wordFits = await game.page.locator('#word').evaluate((e) => e.scrollWidth <= e.clientWidth + 1);
+    expect(wordFits, 'a palavra transborda').toBe(true);
+  }
+
   const overflow = await game.page.evaluate(() => ({
     x: document.documentElement.scrollWidth - window.innerWidth,
     y: document.documentElement.scrollHeight - window.innerHeight,
@@ -84,6 +103,14 @@ for (const gameId of QUIZ_GAMES) {
           test(`${difficulty}: tudo cabe, sem rolar e sem se sobrepor`, async ({ game }) => {
             await game.open({ difficulty });
             await checkLayout(game, viewport);
+
+            if (CHECK_EVERY_ROUND.has(gameId)) {
+              for (let i = 1; i < game.plan.total; i++) {
+                await game.answerRight();
+                await checkLayout(game, viewport);
+              }
+              return;
+            }
 
             // o pior caso: a rodada com mais objetos para contar (no Quantos tem?, até 20)
             const counts = game.plan.rounds.map((r) => r.count || 0);

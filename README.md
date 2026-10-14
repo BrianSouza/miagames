@@ -50,6 +50,7 @@ miagames/
 │   └── fonts/                     ← Andika (fonte para alfabetização, licença OFL)
 ├── assets/games/which-letter/     ← Qual é a letra? (index.html, which-letter-logic.js, game.js)
 ├── assets/games/how-many/         ← Quantos tem? (+ img/ com os objetos)
+├── assets/games/missing-syllable/ ← Qual sílaba falta? (words.js, lógica, game.js + img/ com o desenho de cada palavra)
 ├── assets/games/memory/           ← Jogo da Memória (mini-app web)
 │   ├── index.html
 │   ├── style.css
@@ -109,6 +110,7 @@ A Home, o seletor de dificuldade e a tela de jogo funcionam automaticamente.
 | **Jogo da Memória** | Acha os pares de letras e números | 6, 8 e 10 pares; números até 9, 20 e 50 |
 | **Qual é a letra?** | A voz fala o nome e a criança toca na figura certa | 3 letras · 4 letras ou números até 20 · 6 letras ou números até 50 |
 | **Quantos tem?** | Conta os objetos (tocar em cada um fala o número) e escolhe quantos são | 1 a 5 · 1 a 10 · 1 a 20 |
+| **Qual sílaba falta?** | Vê o desenho de uma palavra e a palavra com uma sílaba faltando (`BO _`); escolhe a que completa | palavras de 2 sílabas, 3 respostas bem diferentes · 2 sílabas, 4 respostas parecidas · palavras de 3 sílabas |
 
 Os jogos de responder (todos menos a Memória) têm **8 rodadas**. As estrelas vêm dos acertos
 **de primeira**: 7 de 8 ou mais = 3 estrelas, 5 de 8 ou mais = 2, senão 1. A pontuação que vai
@@ -129,6 +131,16 @@ e, depois de 2 erros na mesma rodada, a resposta certa "respira" e a pergunta se
 - A pergunta tem o gênero certo: "Quantas estrelas…", "Quantos peixes…"
 - Fora do fácil, uma das respostas é vizinha da certa (errar por um é o engano mais comum); as figuras vêm em ordem crescente
 - No difícil, metade das rodadas passa de 10 objetos
+
+### Qual sílaba falta?
+
+- 27 palavras com desenho próprio (`tool/words_art.py`): 19 de duas sílabas e 8 de três, todas só com sílabas "consoante + vogal" (BO-LA, CA-SA)
+- A voz diz "Bola. Qual sílaba falta?". Ao acertar, a sílaba entra na lacuna e a voz soletra e fala a palavra ("bô, lá, bola!")
+- **Nenhuma resposta errada forma outra palavra** que a criança conheça: BO_A com CA seria "boca". A conferência usa as palavras do jogo e uma lista de outras palavras comuns (`OTHER_WORDS` em `words.js`)
+- Fácil: respostas bem diferentes da certa (outra consoante e outra vogal). Médio e difícil: parecidas, uma com a mesma consoante (BO → BA), uma com a mesma vogal (BO → LO) e uma qualquer
+- Ao errar, a voz fala a sílaba que a criança escolheu ("cá. Tente de novo!"), para ela aprender o som
+- `sayFor` (em `words.js`) dá a pronúncia de cada sílaba solta, com a vogal acentuada ("to" → "tô"), porque o motor de voz leria "tu". Uma sílaba que ainda soe estranha no aparelho se corrige em `SAY_OVERRIDES`, sem mexer no resto
+- Para trocar ou acrescentar uma palavra: edite `words.js`, desenhe-a em `tool/words_art.py` e rode `python3 tool/generate_illustrations.py`. Os testes conferem sílabas, desenho e que nenhuma resposta errada forme palavra
 
 ### Jogo da Memória
 

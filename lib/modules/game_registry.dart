@@ -66,6 +66,28 @@ final List<GameModule> gameRegistry = [
       GameDifficulty.hard: 'Contar de 1 a 20',
     },
   ),
+  const GameModule(
+    id: 'missing-syllable',
+    displayName: 'Qual sílaba falta?',
+    iconAsset: 'assets/images/missing_syllable.svg',
+    accentColor: Color(0xFFA78BFA),
+    ageRange: [5, 6],
+    skills: ['Sílabas', 'Leitura'],
+    difficulties: [
+      GameDifficulty.easy,
+      GameDifficulty.medium,
+      GameDifficulty.hard,
+    ],
+    assetPath: 'assets/games/missing-syllable/index.html',
+    scoreLabel: 'erros',
+    scoreLabelSingular: 'erro',
+    // Mantenha em sincronia com `syllables` e `similar` em missing-syllable-logic.js
+    difficultyHints: {
+      GameDifficulty.easy: 'Palavras de 2 sílabas',
+      GameDifficulty.medium: 'Sílabas parecidas',
+      GameDifficulty.hard: 'Palavras de 3 sílabas',
+    },
+  ),
   // Próximos jogos:
   // GameModule(id: 'number-puzzle', displayName: 'Quebra-Cabeça', ...)
   // GameModule(id: 'color-match',   displayName: 'Mistura de Cores', ...)

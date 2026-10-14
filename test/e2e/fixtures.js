@@ -13,6 +13,7 @@ const { test: base, expect } = require('@playwright/test');
 const LOGICS = {
   'which-letter': require('../../assets/games/which-letter/which-letter-logic.js'),
   'how-many': require('../../assets/games/how-many/how-many-logic.js'),
+  'missing-syllable': require('../../assets/games/missing-syllable/missing-syllable-logic.js'),
 };
 
 const gameUrl = (id) =>
@@ -217,6 +218,7 @@ const CLASSES = {
   memory: (page, problems) => new MemoryGame(page, problems),
   'which-letter': (page, problems) => new QuizGame(page, problems, 'which-letter'),
   'how-many': (page, problems) => new QuizGame(page, problems, 'how-many'),
+  'missing-syllable': (page, problems) => new QuizGame(page, problems, 'missing-syllable'),
 };
 
 const test = base.extend({

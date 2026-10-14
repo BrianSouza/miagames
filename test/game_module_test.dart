@@ -95,6 +95,28 @@ void main() {
     }
   });
 
+  test('os textos de dificuldade do "Qual sílaba falta?" batem com o jogo', () {
+    final game = findGameById('missing-syllable')!;
+    final logic = File(
+      'assets/games/missing-syllable/missing-syllable-logic.js',
+    ).readAsStringSync();
+    final config = {
+      for (final m in RegExp(
+        r'(easy|medium|hard):\s*\{[^}]*syllables:\s*(\d+)[^}]*similar:\s*(true|false)',
+      ).allMatches(logic))
+        m[1]!: (int.parse(m[2]!), m[3] == 'true'),
+    };
+    expect(config, {
+      'easy': (2, false),
+      'medium': (2, true),
+      'hard': (3, true),
+    });
+
+    expect(game.hintFor(GameDifficulty.easy), 'Palavras de 2 sílabas');
+    expect(game.hintFor(GameDifficulty.medium), 'Sílabas parecidas');
+    expect(game.hintFor(GameDifficulty.hard), 'Palavras de 3 sílabas');
+  });
+
   test('cada jogo tem id único, ilustração e conta erros ou jogadas', () {
     final ids = gameRegistry.map((g) => g.id).toList();
     expect(ids.toSet().length, ids.length);

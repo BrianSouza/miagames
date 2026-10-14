@@ -8,11 +8,11 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final svgs = [
     ...Directory('assets/images').listSync(recursive: true),
-    ...Directory('assets/games/_shared/img').listSync(recursive: true),
+    ...Directory('assets/games').listSync(recursive: true),
   ].whereType<File>().where((f) => f.path.endsWith('.svg')).toList();
 
   test('há ilustrações para conferir', () {
-    expect(svgs.length, greaterThanOrEqualTo(5));
+    expect(svgs.length, greaterThanOrEqualTo(40));
   });
 
   for (final file in svgs) {

@@ -304,3 +304,39 @@ html, body {
 .option .glyph[data-len="2"] { font-size: calc(var(--opt-size) * .48); }
 .option[data-kind="letter"] { color: #1565C0; }
 .option[data-kind="number"] { color: #C2185B; }
+
+/* Jogos com um quadro para olhar (objetos para contar, desenho da palavra):
+   retrato: a Mia pergunta em cima, o quadro no meio e as respostas embaixo;
+   paisagem: o quadro à esquerda; a Mia e as respostas à direita. */
+.stage.board-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) minmax(168px, 28vh);
+  grid-template-areas: "asker" "board" "options";
+  gap: 8px;
+  align-items: stretch;
+  justify-items: center;
+}
+.board-layout .asker { grid-area: asker; }
+.board-layout .board-area { grid-area: board; }
+.board-layout .options-area { grid-area: options; }
+.board-layout .asker .mia { width: min(12vh, 96px); height: min(12vh, 96px); }
+
+.board-area {
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (orientation: landscape) {
+  .stage.board-layout {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas: "board asker" "board options";
+    gap: 8px 24px;
+  }
+  .board-layout .asker .mia { width: min(22vh, 120px); height: min(22vh, 120px); }
+}

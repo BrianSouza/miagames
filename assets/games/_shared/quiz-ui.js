@@ -21,6 +21,8 @@
    *   renderOption(el, option, round) — preenche o botão de uma figura (conteúdo e rótulo)
    *   renderStage(round)       — (opcional) desenha o resto da rodada: objetos, imagem...
    *   layoutStage()            — (opcional) ajusta o resto ao tamanho da tela
+   *   wrongSpeech(round, key)  — (opcional) o que a voz diz ao errar (padrão: "Tente de novo!")
+   *   onCorrect(round, key)    — (opcional) chamado ao acertar, antes da pausa (ex.: preencher a lacuna)
    */
   function start(config) {
     var Logic = config.logic;
@@ -149,7 +151,7 @@
           animate(optionEl(round.answerKey), 'pulse', true);
           speak(prompt());
         } else {
-          speak('Tente de novo!');
+          speak(config.wrongSpeech ? config.wrongSpeech(round, key) : 'Tente de novo!');
         }
         return;
       }
@@ -163,6 +165,7 @@
       setMia('cheer');
       Sounds.play('match');
       speak(config.correctSpeech(round));
+      if (config.onCorrect) config.onCorrect(round, key);
       header.setDone(state.solved);
 
       var token = state.round;

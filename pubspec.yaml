@@ -31,6 +31,8 @@ flutter:
     - assets/games/which-letter/
     - assets/games/how-many/
     - assets/games/how-many/img/
+    - assets/games/missing-syllable/
+    - assets/games/missing-syllable/img/
     - assets/games/_shared/
     - assets/games/_shared/fonts/
     - assets/games/_shared/img/

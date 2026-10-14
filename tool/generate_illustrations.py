@@ -4,6 +4,7 @@ Uso: python3 tool/generate_illustrations.py
 
 - assets/images/memory_game.svg  → ícone do jogo da memória na Home
 - assets/images/which_letter.svg → ícone do "Qual é a letra?"
+- assets/games/missing-syllable/img/*.svg → desenhos das palavras do "Qual sílaba falta?" (tool/words_art.py)
 - assets/images/mia/*.svg        → a gatinha Mia em 4 poses (Flutter)
 - assets/games/_shared/img/*.svg → as mesmas poses para os jogos (web)
 - tool/brand/*.svg               → fontes do ícone do app e do splash (veja tool/render_brand.js)
@@ -16,6 +17,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mia import POSES, head_svg, mono_svg
+from words_art import WORDS, VIEWBOX as WORD_VIEWBOX
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 
@@ -169,3 +171,29 @@ how_many_icon = (
 write('assets/images/how_many.svg',
       f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">{how_many_icon}</svg>\n')
 print('ícone gerado: assets/images/how_many.svg')
+
+
+# ── "Qual sílaba falta?": um desenho por palavra ──────────────────────────────
+for word, art in WORDS.items():
+    box = WORD_VIEWBOX.get(word, '0 0 100 100')
+    write(f'assets/games/missing-syllable/img/{word}.svg',
+          f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{box}">{art()}</svg>\n')
+print(f'{len(WORDS)} desenhos de palavras gerados')
+
+
+# ── Ícone do "Qual sílaba falta?": o desenho de uma casa e a palavra com a lacuna ──
+missing_icon = (
+    '<g transform="translate(26 2) scale(0.68)">'
+    + WORDS['casa']() +
+    '</g>'
+    # "CA" numa caixa branca (letras desenhadas com traços) e a lacuna tracejada
+    + '<rect x="8" y="70" width="48" height="40" rx="9" fill="#fff" stroke="#D9E2E5" stroke-width="2"/>'
+    + stroke('M30 83 Q18 80 18 90 Q18 100 30 97', BLUE, 5.5)
+    + stroke('M33 99 L39 80 L45 99 M35.5 92.5 H42.5', BLUE, 5.5)
+    + '<rect x="64" y="70" width="48" height="40" rx="9" fill="none" stroke="#90A4AE" stroke-width="3.5" stroke-dasharray="6 5"/>'
+    + stroke('M80 84 Q80 78 88 78 Q96 78 96 85 Q96 90 88 93 V98', '#90A4AE', 4.5)
+    + '<circle cx="88" cy="105" r="2.6" fill="#90A4AE"/>'
+)
+write('assets/images/missing_syllable.svg',
+      f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">{missing_icon}</svg>\n')
+print('ícone gerado: assets/images/missing_syllable.svg')
