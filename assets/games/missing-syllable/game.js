@@ -3,7 +3,7 @@
 
   // O "Qual sílaba falta?" mostra o desenho e a palavra com a lacuna; o resto (ponte, rodadas,
   // acerto/erro/dica, fim de jogo) é do kit em _shared/quiz-ui.js.
-  // As regras e o banco de palavras ficam em missing-syllable-logic.js e words.js (testados no Node).
+  // As regras e o banco de palavras ficam em missing-syllable-logic.js e _shared/words.js (testados no Node).
   var Logic = window.MissingSyllableLogic;
 
   var MAX_PICTURE = 280;

@@ -15,6 +15,7 @@ const LOGICS = {
   'how-many': require('../../assets/games/how-many/how-many-logic.js'),
   'missing-syllable': require('../../assets/games/missing-syllable/missing-syllable-logic.js'),
 };
+const PaintLogic = require('../../assets/games/paint/paint-logic.js');
 
 const gameUrl = (id) =>
   pathToFileURL(path.join(__dirname, `../../assets/games/${id}/index.html`)).href;
@@ -219,11 +220,171 @@ class QuizGame extends Game {
   }
 }
 
+/**
+ * "Colorir": pinta de verdade, passando o mouse. Para saber onde é "dentro" da letra, lê a máscara
+ * (#mask), que é a forma da letra desenhada num canvas escondido.
+ */
+class PaintGame extends Game {
+  constructor(page, problems) {
+    super(page, problems, 'paint');
+  }
+
+  async open({ level = 1, seed = 1, ...rest } = {}) {
+    await super.open({ level, seed, ...rest });
+    this.plan = PaintLogic.createGame(level, { random: prng(seed) });
+    await this.ready();
+    return this;
+  }
+
+  /** Espera a forma estar desenhada (a fonte carrega de forma assíncrona) */
+  ready() {
+    return this.page.waitForSelector('#canvas-wrap[data-ready]');
+  }
+
+  /** Quantas formas já foram pintadas */
+  doneCount() {
+    return this.page.locator('#progress .dot.done').count();
+  }
+
+  swatch(id) {
+    return this.page.locator(`.swatch[data-color="${id}"]`);
+  }
+
+  /** O pincel atual, em px de tela */
+  async brush() {
+    return Number(await this.page.locator('#canvas-wrap').getAttribute('data-brush'));
+  }
+
+  /**
+   * Fileiras de pontos DENTRO da letra, em coordenadas de tela: [[{x, y}, ...], ...].
+   * Cada fileira é um trecho contínuo de dentro; entre fileiras o dedo se levanta, então
+   * pintar por elas nunca sai do contorno. `rowStep`/`colStep` em px de tela.
+   */
+  insideRuns(rowStep, colStep) {
+    return this.page.evaluate(
+      ({ rowStep, colStep }) => {
+        const mask = document.getElementById('mask');
+        const data = mask.getContext('2d').getImageData(0, 0, mask.width, mask.height).data;
+        const rect = document.getElementById('outline').getBoundingClientRect();
+        const sx = rect.width / mask.width;
+        const sy = rect.height / mask.height;
+        const runs = [];
+        for (let y = Math.floor(rowStep / 2 / sy); y < mask.height; y += Math.max(1, Math.round(rowStep / sy))) {
+          let run = [];
+          for (let x = 0; x < mask.width; x += Math.max(1, Math.round(colStep / sx))) {
+            const inside = data[(y * mask.width + x) * 4 + 3] > 200;
+            if (inside) run.push({ x: rect.left + x * sx, y: rect.top + y * sy });
+            else if (run.length) { runs.push(run); run = []; }
+          }
+          if (run.length) runs.push(run);
+        }
+        return runs;
+      },
+      { rowStep, colStep },
+    );
+  }
+
+  /** Um ponto dentro da letra e outro bem fora dela (o canto da tela de pintura) */
+  async insideAndOutside() {
+    const [first] = await this.insideRuns(20, 20);
+    const rect = await this.page.locator('#outline').boundingBox();
+    return { inside: first[Math.floor(first.length / 2)], outside: { x: rect.x + 2, y: rect.y + 2 } };
+  }
+
+  /**
+   * Pinta (parte de) a letra por dentro, sem sair do contorno. `fraction`: quanto das fileiras.
+   * Os eventos de ponteiro são disparados de uma vez dentro da página (um por um, pelo mouse, as
+   * palavras do nível 6 levariam minutos); o mouse de verdade é usado nos testes de contorno.
+   */
+  async paintInside(fraction = 1) {
+    const brush = await this.brush();
+    // espaçamento pequeno em relação ao pincel, para não perder traços finos da letra
+    const step = Math.max(6, brush * 0.4);
+    const runs = await this.insideRuns(step, step);
+    const used = runs.slice(0, Math.ceil(runs.length * fraction));
+    await this.page.evaluate((runs) => {
+      const el = document.getElementById('outline');
+      const fire = (type, p) =>
+        el.dispatchEvent(
+          new PointerEvent(type, {
+            clientX: p.x, clientY: p.y, pointerId: 1, pointerType: 'mouse',
+            isPrimary: true, bubbles: true, cancelable: true,
+          }),
+        );
+      for (const run of runs) {
+        fire('pointerdown', run[0]);
+        for (const p of run.slice(1)) fire('pointermove', p);
+        fire('pointerup', run[run.length - 1]);
+      }
+    }, used);
+  }
+
+  /** Um toque que começa dentro, vai para fora do contorno e volta: conta 1 saída */
+  async leaveOnce() {
+    const { inside, outside } = await this.insideAndOutside();
+    await this.page.mouse.move(inside.x, inside.y);
+    await this.page.mouse.down();
+    await this.page.mouse.move(outside.x, outside.y);
+    await this.page.mouse.move(inside.x, inside.y);
+    await this.page.mouse.up();
+  }
+
+  /** Pinta a forma atual inteira e espera a pausa de comemoração */
+  async finishItem() {
+    await this.paintInside(1);
+    await this.tick(PaintLogic.ADVANCE_DELAY_MS);
+    if ((await this.doneCount()) < this.plan.total) await this.ready();
+  }
+
+  /** Joga uma partida perfeita, sem sair do contorno */
+  async solve() {
+    for (let i = 0; i < this.plan.total; i++) await this.finishItem();
+  }
+
+  /** Os pixels pintados (alpha > 10) que ficam FORA da máscara: tem de ser 0 */
+  paintOutsideMask() {
+    return this.page.evaluate(() => {
+      const get = (id) => {
+        const c = document.getElementById(id);
+        return c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      };
+      const paint = get('paint');
+      const mask = get('mask');
+      let outside = 0;
+      let painted = 0;
+      for (let i = 3; i < paint.length; i += 4) {
+        if (paint[i] > 10) {
+          painted++;
+          if (mask[i] < 10) outside++;
+        }
+      }
+      return { painted, outside };
+    });
+  }
+
+  /** A cor (rgb) do pixel pintado mais ao centro da letra */
+  paintedColor() {
+    return this.page.evaluate(() => {
+      const c = document.getElementById('paint');
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      const counts = {};
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] > 250) {
+          const k = `${d[i]},${d[i + 1]},${d[i + 2]}`;
+          counts[k] = (counts[k] || 0) + 1;
+        }
+      }
+      return counts;
+    });
+  }
+}
+
 const CLASSES = {
   memory: (page, problems) => new MemoryGame(page, problems),
   'which-letter': (page, problems) => new QuizGame(page, problems, 'which-letter'),
   'how-many': (page, problems) => new QuizGame(page, problems, 'how-many'),
   'missing-syllable': (page, problems) => new QuizGame(page, problems, 'missing-syllable'),
+  paint: (page, problems) => new PaintGame(page, problems),
 };
 
 const test = base.extend({

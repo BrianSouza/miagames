@@ -11,7 +11,7 @@
     module.exports = factory(
       require('../_shared/symbols.js'),
       require('../_shared/quiz.js'),
-      require('./words.js'),
+      require('../_shared/words.js'),
       require('../_shared/game-utils.js'),
     );
   } else {

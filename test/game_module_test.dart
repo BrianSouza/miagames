@@ -17,7 +17,7 @@ List<Map<String, String>> levelsOf(String file) {
     for (final object in RegExp(r'\{([^}]*)\}').allMatches(table))
       {
         for (final pair in RegExp(
-          r'(\w+):\s*([\w.]+)',
+          r"(\w+):\s*([\w.']+)",
         ).allMatches(object.group(1)!))
           pair.group(1)!: pair.group(2)!,
       },
@@ -153,13 +153,41 @@ void main() {
     });
   });
 
+  test('Colorir: o tipo de forma de cada nível bate com a tabela do jogo', () {
+    final game = findGameById('paint')!;
+    final levels = levelsOf('assets/games/paint/paint-logic.js');
+    expect(levels.length, 6);
+    const expected = {
+      'vowels': 'Vogais',
+      'straight': 'traços retos',
+      'letters': 'Todas as letras',
+      'lower': 'minúsculas',
+      'words4': 'Palavras',
+      'words6': 'Palavras',
+    };
+    for (final difficulty in GameDifficulty.values) {
+      final pool = levels[difficulty.index]['pool']!.replaceAll("'", '');
+      expect(
+        game.hintFor(difficulty),
+        contains(expected[pool]!),
+        reason: '${difficulty.label} ($pool)',
+      );
+    }
+    expect(game.scoreText(1), '1 saída');
+    expect(game.scoreText(4), '4 saídas');
+  });
+
   test('cada jogo tem id único, ilustração e conta erros ou jogadas', () {
     final ids = gameRegistry.map((g) => g.id).toList();
     expect(ids.toSet().length, ids.length);
     for (final game in gameRegistry) {
       expect(File(game.iconAsset).existsSync(), isTrue, reason: game.id);
       expect(File(game.assetPath).existsSync(), isTrue, reason: game.id);
-      expect(['jogadas', 'erros'], contains(game.scoreLabel), reason: game.id);
+      expect(
+        ['jogadas', 'erros', 'saídas'],
+        contains(game.scoreLabel),
+        reason: game.id,
+      );
     }
   });
 }

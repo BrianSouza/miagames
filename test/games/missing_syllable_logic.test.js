@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const Logic = require('../../assets/games/missing-syllable/missing-syllable-logic.js');
-const Data = require('../../assets/games/missing-syllable/words.js');
+const Data = require('../../assets/games/_shared/words.js');
 
 const GAME_DIR = path.join(__dirname, '../../assets/games/missing-syllable');
 

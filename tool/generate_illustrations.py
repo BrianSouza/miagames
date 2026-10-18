@@ -197,3 +197,22 @@ missing_icon = (
 write('assets/images/missing_syllable.svg',
       f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">{missing_icon}</svg>\n')
 print('ícone gerado: assets/images/missing_syllable.svg')
+
+
+# ── Ícone do "Colorir": uma letra pintada e um pincel ────────────────────────
+paint_icon = (
+    '<rect x="10" y="14" width="76" height="92" rx="14" fill="#fff" stroke="#D9E2E5" stroke-width="2"/>'
+    # o "A" contornado de azul, com o miolo pintado até a metade
+    + stroke('M26 96 L48 34 L70 96 M34 76 H62', '#DDE6F2', 15)
+    + '<path d="M26 96 L40 56 M34 76 H44" fill="none" stroke="#FF6B9A" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>'
+    + stroke('M26 96 L48 34 L70 96 M34 76 H62', BLUE, 3.5)
+    # o pincel
+    + '<g transform="rotate(35 92 40)">'
+    '<rect x="86" y="4" width="12" height="40" rx="6" fill="#FFC93C" stroke="#D99A00" stroke-width="2.5"/>'
+    '<rect x="85" y="40" width="14" height="14" rx="2" fill="#B0BEC5" stroke="#78909C" stroke-width="2.5"/>'
+    '<path d="M86 54 H98 L96 70 Q92 78 88 70 Z" fill="#FF6B9A" stroke="#C2185B" stroke-width="2.5" stroke-linejoin="round"/>'
+    '</g>'
+)
+write('assets/images/paint.svg',
+      f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">{paint_icon}</svg>\n')
+print('ícone gerado: assets/images/paint.svg')

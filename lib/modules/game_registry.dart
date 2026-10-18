@@ -80,6 +80,27 @@ final List<GameModule> gameRegistry = [
       GameDifficulty.level6: '3 sílabas, 5 respostas',
     },
   ),
+  const GameModule(
+    id: 'paint',
+    displayName: 'Colorir',
+    iconAsset: 'assets/images/paint.svg',
+    accentColor: Color(0xFFFF6B9A),
+    ageRange: [3, 6],
+    skills: ['Letras', 'Contorno', 'Escrita'],
+    assetPath: 'assets/games/paint/index.html',
+    // Aqui a pontuação são as vezes que o dedo saiu do contorno (quanto menos, melhor)
+    scoreLabel: 'saídas',
+    scoreLabelSingular: 'saída',
+    // Mantenha em sincronia com LEVELS em paint-logic.js
+    difficultyHints: {
+      GameDifficulty.level1: 'Vogais',
+      GameDifficulty.level2: 'Letras de traços retos',
+      GameDifficulty.level3: 'Todas as letras',
+      GameDifficulty.level4: 'Letras minúsculas',
+      GameDifficulty.level5: 'Palavras com desenho',
+      GameDifficulty.level6: 'Palavras maiores, pincel fino',
+    },
+  ),
   // Próximos jogos:
   // GameModule(id: 'number-puzzle', displayName: 'Quebra-Cabeça', ...)
   // GameModule(id: 'color-match',   displayName: 'Mistura de Cores', ...)

@@ -49,8 +49,9 @@ miagames/
 │   ├── symbols.js                 ← Letras, números por extenso e símbolos que se confundem (testado no Node)
 │   └── fonts/                     ← Andika (fonte para alfabetização, licença OFL)
 ├── assets/games/which-letter/     ← Qual é a letra? (index.html, which-letter-logic.js, game.js)
+├── assets/games/paint/            ← Colorir (canvas em camadas: máscara, tinta recortada, contorno)
 ├── assets/games/how-many/         ← Quantos tem? (+ img/ com os objetos)
-├── assets/games/missing-syllable/ ← Qual sílaba falta? (words.js, lógica, game.js + img/ com o desenho de cada palavra)
+├── assets/games/missing-syllable/ ← Qual sílaba falta? (lógica, game.js + img/ com o desenho de cada palavra; a lista de palavras é `_shared/words.js`)
 ├── assets/games/memory/           ← Jogo da Memória (mini-app web)
 │   ├── index.html
 │   ├── style.css
@@ -110,6 +111,7 @@ A Home, a trilha de níveis e a tela de jogo funcionam automaticamente. O jogo r
 | **Jogo da Memória** | Acha os pares de letras e números | 4, 6, 8, 10, 12 e 14 pares; números até 5, 9, 15, 20, 30 e 50 |
 | **Qual é a letra?** | A voz fala o nome e a criança toca na figura certa | letras A–M (3 figuras) → todas as letras → com números até 10, 20, 30 e 50; 3 a 6 figuras; do nível 4 em diante, uma figura parecida (E/F, M/N, 13/23) |
 | **Quantos tem?** | Conta os objetos (tocar em cada um fala o número) e escolhe quantos são | contar até 3, 5, 10, 15, 20 e 20 (com 5 respostas) |
+| **Colorir** | Escolhe a cor e pinta com o dedo **dentro** de uma letra ou palavra (a tinta não sai do contorno) | vogais → letras de traços retos → todas as maiúsculas → minúsculas → palavras de 4 letras (com o desenho) → palavras de 6 letras; o pincel afina e a tolerância encolhe |
 | **Qual sílaba falta?** | Vê o desenho de uma palavra e a palavra com uma sílaba faltando (`BO _`); escolhe a que completa | palavras de 2 sílabas (a lacuna é sempre a última no nível 1) → 2 sílabas com respostas parecidas → palavras de 3 sílabas, com 3, 4 e 5 respostas |
 
 ### Trilha de 6 níveis
@@ -137,6 +139,15 @@ para o Flutter (`moves`) é o **número de erros**, e a Área dos pais a chama d
 (na Memória, "jogadas"). Errar não tem castigo: a figura some de leve, a voz diz "Tente de novo!"
 e, depois de 2 erros na mesma rodada, a resposta certa "respira" e a pergunta se repete.
 
+### Colorir
+
+- A criança escolhe uma entre **8 cores** (a voz fala o nome) e passa o dedo na letra. A tinta é desenhada sem recorte numa camada interna e só aparece onde a **máscara** (a forma da letra, em Andika) deixa: **nunca sai do contorno**, então ela aprende o desenho da letra sem "errar" a pintura
+- Cada vez que o dedo **sai do contorno** (com uma tolerância que encolhe a cada nível) conta uma saída e a forma balança de leve. Esse número vira o `moves` do Flutter (a Área dos pais o chama de "saídas") e define as estrelas: de 10 saídas por partida para 3 estrelas no nível 1 até 5 no nível 6. Começar o toque fora e andar por fora antes de entrar não conta; ficar fora por vários movimentos conta uma saída só
+- Depois de 3 saídas na mesma forma, a voz diz "Devagarinho, dentro da letra." (uma vez)
+- A forma termina quando a cobertura do nível é atingida (80% no nível 1, 90% no 6); o que faltava se completa sozinho, a Mia comemora e vem a próxima. São 5 formas por partida
+- Nos níveis de palavras, o desenho da palavra aparece em cima; palavras longas quebram em duas linhas, entre sílabas ("ba / nana"), quando isso deixa as letras maiores
+- Em telas de 320–360 px de largura, uma palavra de 6 letras numa linha só fica com letras de ~50 px de altura (nos tablets, bem maiores): é o limite de caber na tela
+
 ### Qual é a letra?
 
 - A voz diz "Qual é a letra Bê?" (ou "Qual é o número treze?"); o alto-falante e a Mia repetem
@@ -155,11 +166,11 @@ e, depois de 2 erros na mesma rodada, a resposta certa "respira" e a pergunta se
 
 - 31 palavras com desenho próprio (`tool/words_art.py`): 19 de duas sílabas e 12 de três, todas só com sílabas "consoante + vogal" (BO-LA, CA-SA)
 - A voz diz "Bola. Qual sílaba falta?". Ao acertar, a sílaba entra na lacuna e a voz soletra e fala a palavra ("bô, lá, bola!")
-- **Nenhuma resposta errada forma outra palavra** que a criança conheça: BO_A com CA seria "boca". A conferência usa as palavras do jogo e uma lista de outras palavras comuns (`OTHER_WORDS` em `words.js`)
+- **Nenhuma resposta errada forma outra palavra** que a criança conheça: BO_A com CA seria "boca". A conferência usa as palavras do jogo e uma lista de outras palavras comuns (`OTHER_WORDS` em `_shared/words.js`)
 - Níveis 1, 2 e 4: respostas bem diferentes da certa (outra consoante e outra vogal). Níveis 3, 5 e 6: parecidas, uma com a mesma consoante (BO → BA), uma com a mesma vogal (BO → LO) e as demais quaisquer
 - Ao errar, a voz fala a sílaba que a criança escolheu ("cá. Tente de novo!"), para ela aprender o som
-- `sayFor` (em `words.js`) dá a pronúncia de cada sílaba solta, com a vogal acentuada ("to" → "tô"), porque o motor de voz leria "tu". Uma sílaba que ainda soe estranha no aparelho se corrige em `SAY_OVERRIDES`, sem mexer no resto
-- Para trocar ou acrescentar uma palavra: edite `words.js`, desenhe-a em `tool/words_art.py` e rode `python3 tool/generate_illustrations.py`. Os testes conferem sílabas, desenho e que nenhuma resposta errada forme palavra
+- `sayFor` (em `_shared/words.js`) dá a pronúncia de cada sílaba solta, com a vogal acentuada ("to" → "tô"), porque o motor de voz leria "tu". Uma sílaba que ainda soe estranha no aparelho se corrige em `SAY_OVERRIDES`, sem mexer no resto
+- Para trocar ou acrescentar uma palavra: edite `_shared/words.js`, desenhe-a em `tool/words_art.py` e rode `python3 tool/generate_illustrations.py`. Os testes conferem sílabas, desenho e que nenhuma resposta errada forme palavra
 
 ### Jogo da Memória
 

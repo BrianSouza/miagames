@@ -340,7 +340,9 @@ void main() {
       });
     }
 
-    testWidgets('em tela larga os cartões ficam lado a lado', (tester) async {
+    testWidgets('em tela larga os cartões ficam lado a lado, 4 por fileira', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1280, 800);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
@@ -349,12 +351,16 @@ void main() {
 
       final tiles = find.byType(GameTile);
       final first = tester.getTopLeft(tiles.first);
-      final last = tester.getTopLeft(tiles.at(gameRegistry.length - 1));
-      expect(
-        last.dy,
-        first.dy,
-        reason: 'todos os jogos numa só fileira em tela larga',
-      );
+      final fourth = tester.getTopLeft(tiles.at(3));
+      expect(fourth.dy, first.dy, reason: '4 jogos na primeira fileira');
+      expect(fourth.dx, greaterThan(first.dx));
+      if (gameRegistry.length > 4) {
+        expect(
+          tester.getTopLeft(tiles.at(4)).dy,
+          greaterThan(first.dy),
+          reason: 'o quinto desce para a fileira de baixo',
+        );
+      }
     });
   });
 
