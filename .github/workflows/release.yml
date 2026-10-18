@@ -1,0 +1,87 @@
+name: Release APK
+
+# A cada merge no main, gera o APK e atualiza a release "latest" no GitHub, com
+# um link fixo para baixar a versão mais recente:
+#   https://github.com/<dono>/<repo>/releases/latest/download/miagames.apk
+#
+# Em pull requests que mexem neste arquivo, o workflow só COMPILA (sem publicar),
+# para validar o build de release antes do merge.
+#
+# O APK é assinado com a chave de debug (o padrão do projeto Flutter): serve para
+# testar em aparelhos, não para a Play Store. Como a chave de debug é gerada de
+# novo a cada execução, o Android não deixa instalar uma versão por cima de outra:
+# desinstale a anterior primeiro (o progresso salvo no app é apagado).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths: ['.github/workflows/release.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write   # criar a release
+
+concurrency:
+  group: release-apk
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: '3.47.7'
+
+jobs:
+  apk:
+    name: Gerar e publicar o APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      # --no-shrink: sem R8, para não correr o risco de ele remover código usado
+      # pelos plugins (voz e WebView); o app é pequeno, o ganho seria mínimo
+      - run: flutter build apk --release --no-shrink
+      - name: Nomear o APK
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk miagames.apk
+          ls -l miagames.apk
+          sha256sum miagames.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: miagames-release-apk
+          path: miagames.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publicar na release "latest"
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          short="${GITHUB_SHA::7}"
+          cat > notes.md <<NOTES
+          APK de **teste** do MiaGames, gerado do commit \`${short}\` no \`main\`.
+
+          **Como instalar no Android**
+          1. Baixe o \`miagames.apk\` abaixo
+          2. Abra o arquivo e permita a instalação de fontes desconhecidas, se o Android pedir
+
+          **Atualizando:** esta versão é assinada com a chave de debug, que muda a cada
+          build. Para instalar uma versão nova, **desinstale a anterior primeiro**
+          (o progresso salvo no app é apagado).
+
+          Link fixo para a versão mais recente:
+          https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/miagames.apk
+          NOTES
+          # Apaga a release anterior e recria no commit atual (o tag "latest" se move junto)
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest miagames.apk \
+            --title "MiaGames — última versão (${short})" \
+            --notes-file notes.md \
+            --target "$GITHUB_SHA"

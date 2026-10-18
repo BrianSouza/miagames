@@ -3,7 +3,11 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 
+const fs = require('node:fs');
+const path = require('node:path');
+
 const Logic = require('../../assets/games/memory/memory-logic.js');
+const GAME_DIR = path.join(__dirname, '../../assets/games/memory');
 
 /** Duas cartas do mesmo par, sem depender da ordem aleatória */
 function findPair(state) {
@@ -34,11 +38,105 @@ describe('createGame', () => {
       for (let pairId = 0; pairId < pairs; pairId++) {
         const pair = state.cards.filter(c => c.pairId === pairId);
         assert.equal(pair.length, 2);
-        assert.equal(pair[0].emoji, pair[1].emoji);
-        assert.ok(pair[0].name, 'cada carta tem o nome falado do animal');
+        assert.equal(pair[0].symbol, pair[1].symbol);
+        assert.ok(pair[0].name, 'cada carta tem o nome falado');
+        assert.match(pair[0].label, /^(Letra [A-Z]|Número \d{1,2})$/);
       }
     });
   }
+
+  test('letras e números juntos: cerca de 60% letras', () => {
+    for (const [difficulty, letters, numbers] of [['easy', 4, 2], ['medium', 5, 3], ['hard', 6, 4]]) {
+      const state = Logic.createGame(difficulty);
+      const symbols = [...new Set(state.cards.map(c => c.symbol))];
+      assert.equal(symbols.filter(x => /[A-Z]/.test(x)).length, letters, `${difficulty}: letras`);
+      assert.equal(symbols.filter(x => /^\d+$/.test(x)).length, numbers, `${difficulty}: números`);
+    }
+  });
+
+  describe('alcance dos números por dificuldade', () => {
+    const numbersIn = (difficulty) =>
+      Logic.createGame(difficulty).cards.filter(c => c.kind === 'number').map(c => Number(c.symbol));
+
+    test('fácil só tem algarismos soltos (até 9)', () => {
+      for (let i = 0; i < 1000; i++) {
+        for (const n of numbersIn('easy')) assert.ok(n >= 0 && n <= 9, `fácil sorteou ${n}`);
+      }
+    });
+
+    test('médio vai até 20 e já tem números de dois algarismos', () => {
+      const seen = new Set();
+      for (let i = 0; i < 3000; i++) {
+        for (const n of numbersIn('medium')) {
+          assert.ok(n >= 0 && n <= 20, `médio sorteou ${n}`);
+          seen.add(n);
+        }
+      }
+      assert.ok([...seen].some(n => n >= 10), 'médio nunca sorteou um número de dois algarismos');
+      assert.ok(seen.has(20), 'médio nunca chegou ao 20');
+    });
+
+    test('difícil vai até 50 e chega a 50', () => {
+      const seen = new Set();
+      for (let i = 0; i < 5000; i++) {
+        for (const n of numbersIn('hard')) {
+          assert.ok(n >= 0 && n <= 50, `difícil sorteou ${n}`);
+          seen.add(n);
+        }
+      }
+      assert.ok(seen.has(50), 'difícil nunca sorteou o 50');
+      assert.ok([...seen].some(n => n > 20), 'difícil nunca passou do 20');
+    });
+
+    test('o número de pares e a mistura de letras e números não mudam com o alcance', () => {
+      assert.equal(numbersIn('hard').length, 4 * 2);
+      assert.equal(numbersIn('medium').length, 3 * 2);
+      assert.equal(numbersIn('easy').length, 2 * 2);
+    });
+  });
+
+  test('não junta números com os algarismos invertidos (12 e 21)', () => {
+    for (let i = 0; i < 3000; i++) {
+      const numbers = [...new Set(Logic.createGame('hard').cards.filter(c => c.kind === 'number').map(c => c.symbol))];
+      for (const a of numbers) {
+        for (const b of numbers) {
+          assert.ok(!Logic.looksAlike(a, b), `${a} e ${b} juntos`);
+        }
+      }
+    }
+  });
+
+  test('looksAlike: O/0, I/1 e algarismos invertidos', () => {
+    assert.ok(Logic.looksAlike('O', '0') && Logic.looksAlike('0', 'O'));
+    assert.ok(Logic.looksAlike('I', '1') && Logic.looksAlike('1', 'I'));
+    assert.ok(Logic.looksAlike('12', '21') && Logic.looksAlike('31', '13'));
+    assert.ok(!Logic.looksAlike('11', '11'), 'o mesmo número não é parecido com ele mesmo');
+    assert.ok(!Logic.looksAlike('12', '13'));
+    assert.ok(!Logic.looksAlike('A', 'B'));
+  });
+
+  test('o tipo de cada carta bate com o símbolo', () => {
+    for (const card of Logic.createGame('hard').cards) {
+      assert.equal(card.kind, /^[A-Z]$/.test(card.symbol) ? 'letter' : 'number');
+    }
+  });
+
+  test('nunca junta símbolos parecidos (O e 0, I e 1) no mesmo tabuleiro', () => {
+    for (let i = 0; i < 2000; i++) {
+      const difficulty = ['easy', 'medium', 'hard'][i % 3];
+      const symbols = new Set(Logic.createGame(difficulty).cards.map(c => c.symbol));
+      for (const [a, b] of [['O', '0'], ['I', '1']]) {
+        assert.ok(!(symbols.has(a) && symbols.has(b)), `${a} e ${b} juntos: ${[...symbols]}`);
+      }
+    }
+  });
+
+  test('a mesma partida se repete com o mesmo sorteio (seed)', () => {
+    const seeded = () => { let n = 7; return () => (n = (n * 16807) % 2147483647) / 2147483647; };
+    const a = Logic.createGame('medium', { random: seeded() });
+    const b = Logic.createGame('medium', { random: seeded() });
+    assert.deepEqual(a.cards, b.cards);
+  });
 
   test('dificuldade desconhecida cai no fácil', () => {
     assert.equal(Logic.createGame('impossivel').totalPairs, 6);
@@ -48,6 +146,65 @@ describe('createGame', () => {
     const first = Logic.createGame('easy');
     const second = Logic.createGame('easy', { previousRound: first.round });
     assert.notEqual(first.round, second.round);
+  });
+});
+
+describe('símbolos e nomes falados', () => {
+  test('26 letras e 10 números, sem repetição', () => {
+    assert.equal(Logic.LETTERS.length, 26);
+    assert.equal(Logic.numbersUpTo(9).length, 10);
+    assert.deepEqual(Logic.LETTERS.map(l => l.symbol).join(''), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+    assert.deepEqual(Logic.numbersUpTo(9).map(n => n.symbol).join(''), '0123456789');
+  });
+
+  test('toda letra e número tem um nome falado em português', () => {
+    for (const item of [...Logic.LETTERS, ...Logic.numbersUpTo(50)]) {
+      assert.ok(item.name && item.name.length > 0, item.symbol);
+      assert.match(item.name, /^[A-ZÁÉÍÓÚÂÊÔ][a-záéíóúâêôãõç]*( e [a-záéíóúâêôãõç]+)?$/, `nome de ${item.symbol}`);
+    }
+  });
+
+  test('letras falam o NOME da letra, não o que o motor de voz leria sozinho', () => {
+    const names = Object.fromEntries(Logic.LETTERS.map(l => [l.symbol, l.name]));
+    assert.equal(names.B, 'Bê');
+    assert.equal(names.E, 'Ê');   // sozinho, "E" seria lido como a palavra "e"
+    assert.equal(names.H, 'Agá');
+    assert.equal(names.W, 'Dáblio');
+    assert.equal(names.Y, 'Ípsilon');
+  });
+
+  test('números falam por extenso', () => {
+    assert.deepEqual(Logic.numbersUpTo(9).map(n => n.name),
+      ['Zero', 'Um', 'Dois', 'Três', 'Quatro', 'Cinco', 'Seis', 'Sete', 'Oito', 'Nove']);
+  });
+
+  test('números de 10 a 50 são falados por extenso, em português do Brasil', () => {
+    const expected = {
+      10: 'Dez', 11: 'Onze', 12: 'Doze', 13: 'Treze', 14: 'Catorze', 15: 'Quinze',
+      16: 'Dezesseis', 17: 'Dezessete', 18: 'Dezoito', 19: 'Dezenove',
+      20: 'Vinte', 21: 'Vinte e um', 22: 'Vinte e dois', 29: 'Vinte e nove',
+      30: 'Trinta', 33: 'Trinta e três', 37: 'Trinta e sete',
+      40: 'Quarenta', 44: 'Quarenta e quatro', 45: 'Quarenta e cinco',
+      50: 'Cinquenta',
+    };
+    for (const [n, name] of Object.entries(expected)) {
+      assert.equal(Logic.numberName(Number(n)), name, `nome de ${n}`);
+    }
+  });
+
+  test('findSymbol acha letras e números de qualquer tamanho', () => {
+    assert.equal(Logic.findSymbol('B').name, 'Bê');
+    assert.equal(Logic.findSymbol('7').name, 'Sete');
+    assert.equal(Logic.findSymbol('37').name, 'Trinta e sete');
+    assert.equal(Logic.findSymbol('037'), null);
+    assert.equal(Logic.findSymbol('?'), null);
+  });
+
+  test('as letras e números de um jogo pequeno nunca se repetem', () => {
+    for (let i = 0; i < 500; i++) {
+      const symbols = Logic.pickSymbols(10).map(x => x.symbol);
+      assert.equal(new Set(symbols).size, symbols.length);
+    }
   });
 });
 
@@ -157,6 +314,22 @@ describe('calcStars', () => {
     assert.equal(Logic.calcStars({ ...base, moves: 10 }), 2);
     assert.equal(Logic.calcStars({ ...base, moves: 30 }), 1);
     assert.equal(Logic.calcStars({ ...base, moves: 0 }), 3);
+  });
+});
+
+describe('isNewRecord', () => {
+  test('primeira partida (sem recorde) não é novo recorde', () => {
+    assert.equal(Logic.isNewRecord(null, 3, 6), false);
+  });
+
+  test('mais estrelas vencem, mesmo com mais jogadas', () => {
+    assert.equal(Logic.isNewRecord({ stars: 2, moves: 8 }, 3, 9), true);
+    assert.equal(Logic.isNewRecord({ stars: 3, moves: 6 }, 2, 6), false);
+  });
+
+  test('com as mesmas estrelas, só menos jogadas é recorde', () => {
+    assert.equal(Logic.isNewRecord({ stars: 2, moves: 10 }, 2, 9), true);
+    assert.equal(Logic.isNewRecord({ stars: 2, moves: 10 }, 2, 10), false);
   });
 });
 

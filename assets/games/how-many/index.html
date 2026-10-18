@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Quantos tem?</title>
+  <link rel="stylesheet" href="../_shared/kit.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+
+    <header id="header"></header>
+
+    <!-- Só para leitores de tela -->
+    <p id="status" class="sr-only" role="status"></p>
+
+    <main class="stage board-layout">
+      <div id="asker" class="asker">
+        <img id="mia" class="mia" src="../_shared/img/mia_happy.svg" alt="" />
+      </div>
+      <div id="objects-area" class="board-area objects-area">
+        <div id="objects" class="objects" role="group" aria-label="Objetos para contar"></div>
+      </div>
+      <div id="options-area" class="options-area">
+        <div id="options" class="options"></div>
+      </div>
+    </main>
+
+  </div>
+  <script src="../_shared/symbols.js"></script>
+  <script src="../_shared/game-utils.js"></script>
+  <script src="../_shared/quiz.js"></script>
+  <script src="../_shared/sounds.js"></script>
+  <script src="../_shared/bridge.js"></script>
+  <script src="../_shared/hold-exit.js"></script>
+  <script src="../_shared/kit.js"></script>
+  <script src="../_shared/confetti.js"></script>
+  <script src="../_shared/result.js"></script>
+  <script src="../_shared/quiz-ui.js"></script>
+  <script src="how-many-logic.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

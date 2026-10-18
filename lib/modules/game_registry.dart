@@ -5,16 +5,88 @@ final List<GameModule> gameRegistry = [
   const GameModule(
     id: 'memory',
     displayName: 'Jogo da Memória',
-    icon: '🧠',
+    iconAsset: 'assets/images/memory_game.svg',
     accentColor: Color(0xFF4ECDC4),
     ageRange: [3, 6],
-    skills: ['Memória', 'Atenção', 'Concentração'],
+    skills: ['Letras', 'Números', 'Memória'],
     difficulties: [
       GameDifficulty.easy,
       GameDifficulty.medium,
       GameDifficulty.hard,
     ],
     assetPath: 'assets/games/memory/index.html',
+    // Mantenha em sincronia com `maxNumber` em memory-logic.js
+    difficultyHints: {
+      GameDifficulty.easy: 'Letras e números até 9',
+      GameDifficulty.medium: 'Letras e números até 20',
+      GameDifficulty.hard: 'Letras e números até 50',
+    },
+  ),
+  const GameModule(
+    id: 'which-letter',
+    displayName: 'Qual é a letra?',
+    iconAsset: 'assets/images/which_letter.svg',
+    accentColor: Color(0xFFFF6B6B),
+    ageRange: [4, 6],
+    skills: ['Letras', 'Números', 'Escuta'],
+    difficulties: [
+      GameDifficulty.easy,
+      GameDifficulty.medium,
+      GameDifficulty.hard,
+    ],
+    assetPath: 'assets/games/which-letter/index.html',
+    scoreLabel: 'erros',
+    scoreLabelSingular: 'erro',
+    // Mantenha em sincronia com `maxNumber` em which-letter-logic.js
+    difficultyHints: {
+      GameDifficulty.easy: 'Só letras',
+      GameDifficulty.medium: 'Letras e números até 20',
+      GameDifficulty.hard: 'Letras e números até 50',
+    },
+  ),
+  const GameModule(
+    id: 'how-many',
+    displayName: 'Quantos tem?',
+    iconAsset: 'assets/images/how_many.svg',
+    accentColor: Color(0xFFFF9F43),
+    ageRange: [3, 6],
+    skills: ['Contar', 'Números'],
+    difficulties: [
+      GameDifficulty.easy,
+      GameDifficulty.medium,
+      GameDifficulty.hard,
+    ],
+    assetPath: 'assets/games/how-many/index.html',
+    scoreLabel: 'erros',
+    scoreLabelSingular: 'erro',
+    // Mantenha em sincronia com `max` em how-many-logic.js
+    difficultyHints: {
+      GameDifficulty.easy: 'Contar de 1 a 5',
+      GameDifficulty.medium: 'Contar de 1 a 10',
+      GameDifficulty.hard: 'Contar de 1 a 20',
+    },
+  ),
+  const GameModule(
+    id: 'missing-syllable',
+    displayName: 'Qual sílaba falta?',
+    iconAsset: 'assets/images/missing_syllable.svg',
+    accentColor: Color(0xFFA78BFA),
+    ageRange: [5, 6],
+    skills: ['Sílabas', 'Leitura'],
+    difficulties: [
+      GameDifficulty.easy,
+      GameDifficulty.medium,
+      GameDifficulty.hard,
+    ],
+    assetPath: 'assets/games/missing-syllable/index.html',
+    scoreLabel: 'erros',
+    scoreLabelSingular: 'erro',
+    // Mantenha em sincronia com `syllables` e `similar` em missing-syllable-logic.js
+    difficultyHints: {
+      GameDifficulty.easy: 'Palavras de 2 sílabas',
+      GameDifficulty.medium: 'Sílabas parecidas',
+      GameDifficulty.hard: 'Palavras de 3 sílabas',
+    },
   ),
   // Próximos jogos:
   // GameModule(id: 'number-puzzle', displayName: 'Quebra-Cabeça', ...)
