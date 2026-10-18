@@ -50,7 +50,7 @@ class Game {
   }
 
   /** Abre o jogo e envia o INIT, como o Flutter faz quando a página carrega. */
-  async open({ difficulty = 'easy', sound = true, best = null, seed = null } = {}) {
+  async open({ level = 1, sound = true, best = null, seed = null } = {}) {
     await this.page.clock.install({ time: new Date('2030-01-01T00:00:00Z') });
     if (seed !== null) {
       // Tabuleiro previsível: o sorteio da página usa o mesmo gerador que o Node
@@ -79,7 +79,7 @@ class Game {
     await this.page.evaluate(
       (init) =>
         window.handleFlutterMessage({ type: 'INIT', ...init }),
-      { gameId: this.id, difficulty, sound, best },
+      { gameId: this.id, level, sound, best },
     );
     return this;
   }
@@ -108,6 +108,11 @@ class Game {
 class MemoryGame extends Game {
   constructor(page, problems) {
     super(page, problems, 'memory');
+  }
+
+  /** Padrão: nível 2 (6 pares, os números até 9) — os testes da partida contam com 6 pares */
+  open({ level = 2, ...rest } = {}) {
+    return super.open({ level, ...rest });
   }
 
   cards() {
@@ -159,9 +164,9 @@ class QuizGame extends Game {
     this.logic = LOGICS[id];
   }
 
-  async open({ difficulty = 'easy', seed = 1, ...rest } = {}) {
-    await super.open({ difficulty, seed, ...rest });
-    this.plan = this.logic.createGame(difficulty, { random: prng(seed) });
+  async open({ level = 1, seed = 1, ...rest } = {}) {
+    await super.open({ level, seed, ...rest });
+    this.plan = this.logic.createGame(level, { random: prng(seed) });
     return this;
   }
 

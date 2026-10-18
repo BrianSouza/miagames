@@ -26,7 +26,7 @@ class GameSession {
     return {
       'type': 'INIT',
       'gameId': game.id,
-      'difficulty': difficulty.name,
+      'level': difficulty.level,
       'sound': store.soundEnabled,
       'best': best == null ? null : {'stars': best.stars, 'moves': best.moves},
     };

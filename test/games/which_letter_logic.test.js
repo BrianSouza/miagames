@@ -19,24 +19,28 @@ function prng(seed) {
 
 const SEEDS = Array.from({ length: 40 }, (_, i) => i + 1);
 
+const LEVELS = [1, 2, 3, 4, 5, 6];
+const levelGames = (level) => SEEDS.map((seed) => Logic.createGame(level, { random: prng(seed) }));
+
 describe('createGame', () => {
-  test('8 rodadas por nível, e o número de figuras cresce com a dificuldade', () => {
-    const sizes = { easy: 3, medium: 4, hard: 6 };
-    for (const [difficulty, options] of Object.entries(sizes)) {
-      const game = Logic.createGame(difficulty, { random: prng(1) });
-      assert.equal(game.total, 8, difficulty);
-      for (const round of game.rounds) assert.equal(round.options.length, options, difficulty);
+  test('8 rodadas por nível, e o número de figuras cresce: 3, 3, 4, 4, 5 e 6', () => {
+    const sizes = { 1: 3, 2: 3, 3: 4, 4: 4, 5: 5, 6: 6 };
+    for (const [level, options] of Object.entries(sizes)) {
+      const game = Logic.createGame(Number(level), { random: prng(1) });
+      assert.equal(game.total, 8);
+      assert.equal(game.level, Number(level));
+      for (const round of game.rounds) assert.equal(round.options.length, options, `nível ${level}`);
     }
   });
 
-  test('dificuldade desconhecida vira fácil', () => {
-    assert.equal(Logic.createGame('x').difficulty, 'easy');
+  test('nível desconhecido vira o 1', () => {
+    for (const bad of ['x', 0, 7, undefined, null, NaN]) assert.equal(Logic.createGame(bad).level, 1, String(bad));
   });
 
   test('cada rodada tem uma só resposta certa entre figuras diferentes', () => {
-    for (const difficulty of ['easy', 'medium', 'hard']) {
-      for (const seed of SEEDS) {
-        for (const round of Logic.createGame(difficulty, { random: prng(seed) }).rounds) {
+    for (const level of LEVELS) {
+      for (const game of levelGames(level)) {
+        for (const round of game.rounds) {
           const symbols = round.options.map((o) => o.symbol);
           assert.equal(new Set(symbols).size, symbols.length, 'figuras repetidas');
           assert.equal(symbols.filter((s) => s === round.answer.symbol).length, 1);
@@ -46,55 +50,72 @@ describe('createGame', () => {
   });
 
   test('as respostas das rodadas não se repetem', () => {
-    for (const difficulty of ['easy', 'medium', 'hard']) {
-      for (const seed of SEEDS) {
-        const answers = Logic.createGame(difficulty, { random: prng(seed) }).rounds.map((r) => r.answer.symbol);
-        assert.equal(new Set(answers).size, answers.length, `${difficulty} seed ${seed}`);
+    for (const level of LEVELS) {
+      for (const game of levelGames(level)) {
+        const answers = game.rounds.map((r) => r.answer.symbol);
+        assert.equal(new Set(answers).size, answers.length, `nível ${level}`);
       }
     }
   });
 
-  test('fácil só pergunta letras; médio e difícil misturam números (3 de 8)', () => {
+  test('níveis 1 e 2: só letras. A partir do 3: 3 rodadas de número e 5 de letra', () => {
     for (const seed of SEEDS) {
-      const easy = Logic.createGame('easy', { random: prng(seed) });
-      assert.ok(easy.rounds.every((r) => r.answer.kind === 'letter'));
-      for (const difficulty of ['medium', 'hard']) {
-        const kinds = Logic.createGame(difficulty, { random: prng(seed) }).rounds.map((r) => r.answer.kind);
-        assert.equal(kinds.filter((k) => k === 'number').length, 3, difficulty);
-        assert.equal(kinds.filter((k) => k === 'letter').length, 5, difficulty);
+      for (const level of [1, 2]) {
+        const game = Logic.createGame(level, { random: prng(seed) });
+        assert.ok(game.rounds.every((r) => r.answer.kind === 'letter'), `nível ${level}`);
+      }
+      for (const level of [3, 4, 5, 6]) {
+        const kinds = Logic.createGame(level, { random: prng(seed) }).rounds.map((r) => r.answer.kind);
+        assert.equal(kinds.filter((k) => k === 'number').length, 3, `nível ${level}`);
+        assert.equal(kinds.filter((k) => k === 'letter').length, 5, `nível ${level}`);
       }
     }
   });
 
-  test('o alcance dos números segue o nível: até 20 no médio, até 50 no difícil', () => {
-    for (const [difficulty, max] of [['medium', 20], ['hard', 50]]) {
+  test('nível 1 usa só as primeiras letras (A a M); do 2 em diante, o alfabeto todo', () => {
+    const letters = new Set();
+    for (const game of levelGames(1)) {
+      for (const round of game.rounds) round.options.forEach((o) => letters.add(o.symbol));
+    }
+    assert.ok([...letters].every((l) => l <= 'M'), [...letters].join(''));
+    assert.equal(letters.size, 13);
+
+    const all = new Set();
+    for (const game of levelGames(2)) {
+      for (const round of game.rounds) round.options.forEach((o) => all.add(o.symbol));
+    }
+    assert.equal(all.size, 26);
+  });
+
+  test('o alcance dos números cresce: até 10, 20, 30 e 50 (níveis 3 a 6)', () => {
+    for (const [level, max] of [[3, 10], [4, 20], [5, 30], [6, 50]]) {
       let highest = 0;
-      for (const seed of SEEDS) {
-        for (const round of Logic.createGame(difficulty, { random: prng(seed) }).rounds) {
+      for (const game of levelGames(level)) {
+        for (const round of game.rounds) {
           for (const o of round.options.filter((o) => o.kind === 'number')) {
-            assert.ok(Number(o.symbol) <= max, `${difficulty}: ${o.symbol}`);
+            assert.ok(Number(o.symbol) <= max, `nível ${level}: ${o.symbol}`);
             highest = Math.max(highest, Number(o.symbol));
           }
         }
       }
-      assert.ok(highest > max / 2, `${difficulty} deveria chegar perto de ${max}`);
+      assert.ok(highest > max * 0.7, `nível ${level} deveria chegar perto de ${max} (chegou a ${highest})`);
     }
   });
 
   test('as figuras são do mesmo tipo da resposta (letra com letras, número com números)', () => {
-    for (const difficulty of ['medium', 'hard']) {
-      for (const seed of SEEDS) {
-        for (const round of Logic.createGame(difficulty, { random: prng(seed) }).rounds) {
+    for (const level of LEVELS) {
+      for (const game of levelGames(level)) {
+        for (const round of game.rounds) {
           assert.ok(round.options.every((o) => o.kind === round.answer.kind));
         }
       }
     }
   });
 
-  test('nenhuma figura se parece com a resposta (12 e 21)', () => {
-    for (const difficulty of ['easy', 'medium', 'hard']) {
-      for (const seed of SEEDS) {
-        for (const round of Logic.createGame(difficulty, { random: prng(seed) }).rounds) {
+  test('nenhuma figura é a resposta invertida ou trocada por outra igual (O/0, 12/21)', () => {
+    for (const level of LEVELS) {
+      for (const game of levelGames(level)) {
+        for (const round of game.rounds) {
           for (const o of round.options) {
             if (o.symbol === round.answer.symbol) continue;
             assert.ok(!Symbols.looksAlike(round.answer.symbol, o.symbol), `${round.answer.symbol} x ${o.symbol}`);
@@ -104,10 +125,46 @@ describe('createGame', () => {
     }
   });
 
+  test('níveis 4 a 6: uma figura errada é parecida com a certa (E/F, M/N; 13/23)', () => {
+    for (const level of [4, 5, 6]) {
+      let withSimilar = 0;
+      let total = 0;
+      for (const game of levelGames(level)) {
+        for (const round of game.rounds) {
+          const wrongs = round.options.filter((o) => o.symbol !== round.answer.symbol);
+          const similar = wrongs.some((o) =>
+            round.answer.kind === 'letter'
+              ? (Symbols.CONFUSABLE_LETTERS[round.answer.symbol] || []).includes(o.symbol)
+              : round.answer.symbol.length === 1
+                ? Math.abs(Number(round.answer.symbol) - Number(o.symbol)) === 1
+                : Symbols.sharesDigit(round.answer.symbol, o.symbol),
+          );
+          total++;
+          if (similar) withSimilar++;
+        }
+      }
+      // letras sem parecida (Z, S, A...) não têm o que sortear: ainda assim quase todas têm
+      assert.ok(withSimilar / total > 0.7, `nível ${level}: só ${withSimilar} de ${total} rodadas`);
+    }
+  });
+
+  test('níveis 1 a 3 não forçam figuras parecidas (E/F aparecem só por acaso)', () => {
+    let forced = 0;
+    let total = 0;
+    for (const game of levelGames(1)) {
+      for (const round of game.rounds) {
+        const wrongs = round.options.filter((o) => o.symbol !== round.answer.symbol);
+        total++;
+        if (wrongs.some((o) => (Symbols.CONFUSABLE_LETTERS[round.answer.symbol] || []).includes(o.symbol))) forced++;
+      }
+    }
+    assert.ok(forced / total < 0.5, `${forced} de ${total}`);
+  });
+
   test('a posição da resposta certa varia entre as rodadas', () => {
     const positions = new Set();
-    for (const seed of SEEDS) {
-      for (const round of Logic.createGame('hard', { random: prng(seed) }).rounds) {
+    for (const game of levelGames(6)) {
+      for (const round of game.rounds) {
         positions.add(round.options.findIndex((o) => o.symbol === round.answer.symbol));
       }
     }
@@ -115,8 +172,8 @@ describe('createGame', () => {
   });
 
   test('a rodada da partida seguinte é outra', () => {
-    const first = Logic.createGame('easy');
-    assert.equal(Logic.createGame('easy', { previousRound: first.round }).round, first.round + 1);
+    const first = Logic.createGame(1);
+    assert.equal(Logic.createGame(1, { previousRound: first.round }).round, first.round + 1);
   });
 });
 
@@ -133,7 +190,7 @@ describe('promptFor', () => {
 });
 
 describe('answer', () => {
-  const game = () => Logic.createGame('easy', { random: prng(7) });
+  const game = () => Logic.createGame(1, { random: prng(7) });
   const rightOf = (state) => Logic.currentRound(state).answer.symbol;
   const wrongOf = (state) =>
     Logic.currentRound(state).options.find((o) => o.symbol !== rightOf(state)).symbol;
@@ -207,7 +264,7 @@ describe('answer', () => {
 
 describe('next', () => {
   test('avança para a rodada seguinte', () => {
-    const start = Logic.createGame('easy', { random: prng(3) });
+    const start = Logic.createGame(1, { random: prng(3) });
     const solved = Logic.answer(start, Logic.currentRound(start).answer.symbol, 1).state;
     const out = Logic.next(solved, solved.round, 2);
     assert.equal(out.result, 'next');
@@ -216,19 +273,19 @@ describe('next', () => {
   });
 
   test('uma pausa agendada antes de reiniciar é ignorada', () => {
-    const start = Logic.createGame('easy', { random: prng(3) });
+    const start = Logic.createGame(1, { random: prng(3) });
     const solved = Logic.answer(start, Logic.currentRound(start).answer.symbol, 1).state;
-    const restarted = Logic.createGame('easy', { random: prng(3), previousRound: solved.round });
+    const restarted = Logic.createGame(1, { random: prng(3), previousRound: solved.round });
     const out = Logic.next(restarted, solved.round, 2);
     assert.equal(out.result, null);
     assert.equal(out.state, restarted);
   });
 
   test('uma pausa velha não avança o jogo novo, mesmo que ele também esteja comemorando', () => {
-    const start = Logic.createGame('easy', { random: prng(3) });
+    const start = Logic.createGame(1, { random: prng(3) });
     const solved = Logic.answer(start, Logic.currentRound(start).answer.symbol, 1).state;
     // reinicia e acerta a primeira rodada do jogo novo antes da pausa antiga terminar
-    const restarted = Logic.createGame('easy', { random: prng(3), previousRound: solved.round });
+    const restarted = Logic.createGame(1, { random: prng(3), previousRound: solved.round });
     const celebratingAgain = Logic.answer(restarted, Logic.currentRound(restarted).answer.symbol, 2).state;
 
     const stale = Logic.next(celebratingAgain, solved.round, 3);
@@ -239,12 +296,12 @@ describe('next', () => {
   });
 
   test('sem acertar a rodada, não avança', () => {
-    const start = Logic.createGame('easy');
+    const start = Logic.createGame(1);
     assert.equal(Logic.next(start, start.round, 1).result, null);
   });
 
   test('a oitava rodada termina o jogo e marca o tempo', () => {
-    let s = Logic.createGame('easy', { random: prng(5) });
+    let s = Logic.createGame(1, { random: prng(5) });
     let result;
     for (let i = 0; i < 8; i++) {
       s = Logic.answer(s, Logic.currentRound(s).answer.symbol, 1000 + i * 100).state;
@@ -257,21 +314,37 @@ describe('next', () => {
 });
 
 describe('estrelas e recorde', () => {
-  const stars = (firstTry) => Logic.calcStars({ firstTry, total: 8 });
+  const stars = (firstTry, level) => Logic.calcStars({ firstTry, total: 8, level });
 
-  test('7 ou 8 de primeira: 3 estrelas', () => {
-    assert.equal(stars(8), 3);
-    assert.equal(stars(7), 3);
+  test('a exigência cresce com o nível: 2 estrelas pedem 4, 5, 5, 6, 6 e 7 acertos de primeira', () => {
+    const two = [4, 5, 5, 6, 6, 7];
+    const three = [6, 7, 7, 7, 8, 8];
+    for (const level of LEVELS) {
+      assert.equal(stars(two[level - 1], level), 2, `nível ${level}: ${two[level - 1]} acertos`);
+      assert.equal(stars(two[level - 1] - 1, level), 1, `nível ${level}: um a menos`);
+      assert.equal(stars(three[level - 1], level), 3, `nível ${level}: ${three[level - 1]} acertos`);
+      assert.equal(stars(three[level - 1] - 1, level) , 2, `nível ${level}: um a menos para 3`);
+    }
   });
 
-  test('5 ou 6 de primeira: 2 estrelas', () => {
-    assert.equal(stars(6), 2);
-    assert.equal(stars(5), 2);
+  test('o mesmo desempenho rende menos estrelas num nível mais alto', () => {
+    assert.equal(stars(5, 1), 2);
+    assert.equal(stars(5, 4), 1);
+    assert.equal(stars(7, 1), 3);
+    assert.equal(stars(7, 5), 2);
+    assert.equal(stars(7, 6), 2);
+    assert.equal(stars(8, 6), 3);
   });
 
-  test('menos de 5: 1 estrela, nunca zero', () => {
-    assert.equal(stars(4), 1);
-    assert.equal(stars(0), 1);
+  test('nunca menos de 1 estrela', () => {
+    for (const level of LEVELS) assert.equal(stars(0, level), 1);
+  });
+
+  test('a exigência nunca diminui de um nível para o outro', () => {
+    const rules = Logic.QUIZ_STAR_RULES || require('../../assets/games/_shared/game-utils.js').QUIZ_STAR_RULES;
+    for (const key of ['two', 'three']) {
+      for (let i = 1; i < 6; i++) assert.ok(rules[key][i] >= rules[key][i - 1], `${key}[${i}]`);
+    }
   });
 
   test('o recorde considera estrelas e, depois, menos erros', () => {

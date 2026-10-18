@@ -4,11 +4,13 @@ import '../core/storage/progress_store.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_spacing.dart';
 import '../core/widgets/game_tile.dart';
+import '../core/widgets/level_unlocked_dialog.dart';
 import '../core/widgets/mia_avatar.dart';
 import '../core/widgets/parental_gate.dart';
 import '../modules/game_module.dart';
 import '../modules/game_registry.dart';
-import 'difficulty_sheet.dart';
+import '../modules/level_progress.dart';
+import 'level_sheet.dart';
 import 'game_screen.dart';
 import 'parents_screen.dart';
 
@@ -18,11 +20,26 @@ const miaGreeting = 'Oi! Vamos brincar?';
 /// Tela inicial: a Mia acena e os jogos do [gameRegistry] são cartões grandes.
 /// Nomes de jogos e dificuldades são falados ao toque, para quem ainda não
 /// sabe ler.
+/// Como abrir a tela de um jogo. Os testes trocam por uma tela falsa (a WebView
+/// não roda neles).
+typedef GameScreenBuilder =
+    Widget Function(
+      BuildContext context,
+      GameModule game,
+      GameDifficulty difficulty,
+    );
+
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key, required this.narrator, required this.store});
+  const HomeScreen({
+    super.key,
+    required this.narrator,
+    required this.store,
+    this.gameBuilder,
+  });
 
   final Narrator narrator;
   final ProgressStore store;
+  final GameScreenBuilder? gameBuilder;
 
   /// A Área dos pais fica atrás de uma pergunta que crianças pequenas
   /// não conseguem responder.
@@ -35,7 +52,39 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  void _showDifficultyPicker(BuildContext context, GameModule game) {
+  /// Abre o jogo no nível escolhido. Ao voltar, se um nível novo abriu, a Mia comemora
+  /// e a criança pode seguir direto para ele.
+  Future<void> _openGame(
+    BuildContext context,
+    GameModule game,
+    GameDifficulty difficulty,
+  ) async {
+    final before = unlockedCount(store, game);
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) =>
+            gameBuilder?.call(ctx, game, difficulty) ??
+            GameScreen(
+              game: game,
+              difficulty: difficulty,
+              narrator: narrator,
+              store: store,
+            ),
+      ),
+    );
+    if (!context.mounted || unlockedCount(store, game) <= before) return;
+
+    final opened = game.difficulties[unlockedCount(store, game) - 1];
+    narrator.speak(levelUnlockedSpeech(opened));
+    final playNow = await showLevelUnlockedDialog(context, difficulty: opened);
+    if (playNow && context.mounted) {
+      narrator.speak(opened.spoken);
+      await _openGame(context, game, opened);
+    }
+  }
+
+  void _showLevelPicker(BuildContext context, GameModule game) {
     narrator.speak(game.displayName);
     showModalBottomSheet<void>(
       context: context,
@@ -48,23 +97,16 @@ class HomeScreen extends StatelessWidget {
           top: Radius.circular(AppSpacing.radiusXl),
         ),
       ),
-      builder: (ctx) => DifficultySheet(
+      builder: (ctx) => LevelSheet(
         game: game,
         store: store,
+        onLocked: (diff) => narrator.speak(
+          'Ganhe duas estrelas no ${diff.previous!.spoken.toLowerCase()} para abrir este.',
+        ),
         onSelect: (diff) {
-          narrator.speak(diff.label);
+          narrator.speak(diff.spoken);
           Navigator.pop(ctx);
-          Navigator.push<void>(
-            context,
-            MaterialPageRoute(
-              builder: (_) => GameScreen(
-                game: game,
-                difficulty: diff,
-                narrator: narrator,
-                store: store,
-              ),
-            ),
-          );
+          _openGame(context, game, diff);
         },
       ),
     );
@@ -106,8 +148,7 @@ class HomeScreen extends StatelessWidget {
                     delegate: SliverChildBuilderDelegate(
                       (ctx, i) => GameTile(
                         game: gameRegistry[i],
-                        onTap: () =>
-                            _showDifficultyPicker(context, gameRegistry[i]),
+                        onTap: () => _showLevelPicker(context, gameRegistry[i]),
                       ),
                       childCount: gameRegistry.length,
                     ),

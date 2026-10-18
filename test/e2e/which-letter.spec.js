@@ -11,12 +11,12 @@ const complete = async (game) =>
 
 test.describe('partida', () => {
   test('mostra as figuras do nível, uma estrela por rodada, e a voz faz a pergunta', async ({ game }) => {
-    for (const [difficulty, count] of [['easy', 3], ['medium', 4], ['hard', 6]]) {
-      await game.open({ difficulty });
-      await expect(game.options(), difficulty).toHaveCount(count);
+    for (const [level, count] of [[1, 3], [2, 3], [3, 4], [4, 4], [5, 5], [6, 6]]) {
+      await game.open({ level });
+      await expect(game.options(), `nível ${level}`).toHaveCount(count);
       await expect(game.page.locator('#progress .dot')).toHaveCount(8);
       const first = game.plan.rounds[0].answer;
-      expect(await game.spoken(), difficulty).toEqual([Logic.promptFor(first)]);
+      expect(await game.spoken(), `nível ${level}`).toEqual([Logic.promptFor(first)]);
       await game.page.reload();
     }
   });
@@ -59,7 +59,7 @@ test.describe('partida', () => {
   });
 
   test('uma partida perfeita termina com 3 estrelas e envia o resultado', async ({ game }) => {
-    await game.open({ difficulty: 'easy' });
+    await game.open({ level: 1 });
 
     await game.solve();
 
@@ -69,12 +69,12 @@ test.describe('partida', () => {
     expect(others).toHaveLength(0);
     expect(msg).toMatchObject({
       gameId: 'which-letter',
-      difficulty: 'easy',
+      level: 1,
       moves: 0, // erros
       matches: 8,
       stars: 3,
     });
-    expect((await game.spoken()).at(-1)).toBe('Parabéns! Você acertou tudo!');
+    expect((await game.spoken()).at(-1)).toBe('Parabéns! Que incrível!');
   });
 
   test('o tempo só começa no primeiro toque', async ({ game }) => {
@@ -119,7 +119,7 @@ test.describe('errar sem castigo', () => {
   });
 
   test('depois de 2 erros a resposta certa "respira" e a pergunta se repete', async ({ game }) => {
-    await game.open({ difficulty: 'medium' });
+    await game.open({ level: 3 });
     const right = await game.correctSymbol();
     const prompt = Logic.promptFor(game.plan.rounds[0].answer);
 
@@ -137,22 +137,46 @@ test.describe('errar sem castigo', () => {
     await expect(game.page.locator('.option.pulse')).toHaveCount(0);
   });
 
-  test('quem erra em metade das rodadas ganha 1 estrela e os erros vão para o Flutter', async ({ game }) => {
-    await game.open({ difficulty: 'easy' });
+  test('3 acertos de primeira de 8 rendem 1 estrela (no nível 1 são precisos 4 para 2), e a voz incentiva', async ({ game }) => {
+    await game.open({ level: 1 });
 
-    // 4 rodadas com um erro antes de acertar, 4 perfeitas: 4 acertos de primeira de 8
+    // 5 rodadas com um erro antes de acertar, 3 perfeitas
     for (let i = 0; i < 8; i++) {
-      if (i % 2 === 0) await game.option(await game.wrongSymbol()).click();
+      if (i < 5) await game.option(await game.wrongSymbol()).click();
       await game.answerRight();
     }
 
     const [msg] = await complete(game);
-    expect(msg).toMatchObject({ moves: 4, stars: 1, matches: 8 });
+    expect(msg).toMatchObject({ moves: 5, stars: 1, matches: 8 });
     await expect(game.page.locator('.star.earned')).toHaveCount(1);
+    expect((await game.spoken()).at(-1)).toBe('Quase! Vamos tentar de novo?');
+  });
+
+  test('4 acertos de primeira de 8 rendem 2 estrelas no nível 1 e a voz elogia', async ({ game }) => {
+    await game.open({ level: 1 });
+    for (let i = 0; i < 8; i++) {
+      if (i < 4) await game.option(await game.wrongSymbol()).click();
+      await game.answerRight();
+    }
+
+    const [msg] = await complete(game);
+    expect(msg).toMatchObject({ moves: 4, stars: 2 });
+    expect((await game.spoken()).at(-1)).toBe('Muito bem!');
+  });
+
+  test('o mesmo desempenho vale menos num nível mais alto: 4 de primeira no nível 4 é 1 estrela', async ({ game }) => {
+    await game.open({ level: 4 });
+    for (let i = 0; i < 8; i++) {
+      if (i < 4) await game.option(await game.wrongSymbol()).click();
+      await game.answerRight();
+    }
+
+    const [msg] = await complete(game);
+    expect(msg).toMatchObject({ level: 4, moves: 4, stars: 1 });
   });
 
   test('2 erros em uma rodada só contam como 2 erros (a rodada não vale de primeira)', async ({ game }) => {
-    await game.open({ difficulty: 'easy' });
+    await game.open({ level: 1 });
     await game.option(await game.wrongSymbol(0)).click();
     await game.option(await game.wrongSymbol(1)).click();
     await game.answerRight();
@@ -280,7 +304,7 @@ test.describe('recorde, som e saída', () => {
 
 test.describe('figuras', () => {
   test('letras e números têm cores diferentes, e o número de dois algarismos cabe', async ({ game }) => {
-    await game.open({ difficulty: 'hard', seed: 3 });
+    await game.open({ level: 6, seed: 3 });
     // anda até uma rodada de número (sempre há 3 por partida)
     for (let i = 0; i < 8; i++) {
       const round = await game.currentRound();

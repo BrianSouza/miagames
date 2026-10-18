@@ -8,7 +8,7 @@ void main() {
   Future<bool> play(ProgressStore store, int stars, int moves) =>
       store.saveResult(
         gameId: 'memory',
-        difficulty: GameDifficulty.easy,
+        difficulty: GameDifficulty.level1,
         stars: stars,
         moves: moves,
         timeSeconds: 30,
@@ -21,11 +21,11 @@ void main() {
 
       expect(await play(store, 2, 10), isFalse);
 
-      final record = store.record('memory', GameDifficulty.easy)!;
+      final record = store.record('memory', GameDifficulty.level1)!;
       expect(record.stars, 2);
       expect(record.moves, 10);
       expect(record.timesPlayed, 1);
-      expect(store.record('memory', GameDifficulty.hard), isNull);
+      expect(store.record('memory', GameDifficulty.level3), isNull);
     },
   );
 
@@ -40,7 +40,7 @@ void main() {
       reason: 'mesmas estrelas, menos jogadas',
     );
 
-    final record = store.record('memory', GameDifficulty.easy)!;
+    final record = store.record('memory', GameDifficulty.level1)!;
     expect((record.stars, record.moves, record.timesPlayed), (3, 8, 3));
   });
 
@@ -50,7 +50,7 @@ void main() {
 
     expect(await play(store, 1, 30), isFalse);
 
-    final record = store.record('memory', GameDifficulty.easy)!;
+    final record = store.record('memory', GameDifficulty.level1)!;
     expect((record.stars, record.moves, record.timesPlayed), (3, 6, 2));
   });
 
@@ -60,7 +60,7 @@ void main() {
     await store.setSoundEnabled(false);
 
     final reopened = await ProgressStore.load();
-    expect(reopened.record('memory', GameDifficulty.easy)?.stars, 3);
+    expect(reopened.record('memory', GameDifficulty.level1)?.stars, 3);
     expect(reopened.soundEnabled, isFalse);
   });
 
@@ -71,7 +71,7 @@ void main() {
 
     await store.clearProgress();
 
-    expect(store.record('memory', GameDifficulty.easy), isNull);
+    expect(store.record('memory', GameDifficulty.level1), isNull);
     expect(store.voiceEnabled, isFalse);
   });
 
@@ -86,8 +86,8 @@ void main() {
       'progress.memory.easy': 'não é json',
       'progress.memory.medium': '{"stars":"três"}',
     });
-    expect(store.record('memory', GameDifficulty.easy), isNull);
-    expect(store.record('memory', GameDifficulty.medium), isNull);
+    expect(store.record('memory', GameDifficulty.level1), isNull);
+    expect(store.record('memory', GameDifficulty.level2), isNull);
   });
 
   test('notifica quem está ouvindo', () async {

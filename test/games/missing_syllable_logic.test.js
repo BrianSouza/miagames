@@ -21,16 +21,17 @@ function prng(seed) {
 }
 
 const SEEDS = Array.from({ length: 80 }, (_, i) => i + 1);
-const LEVELS = ['easy', 'medium', 'hard'];
-const games = (difficulty) => SEEDS.map((seed) => Logic.createGame(difficulty, { random: prng(seed) }));
+const LEVELS = [1, 2, 3, 4, 5, 6];
+const games = (level) => SEEDS.map((seed) => Logic.createGame(level, { random: prng(seed) }));
+const syllablesOf = (level) => (level >= 4 ? 3 : 2);
 
 describe('banco de palavras', () => {
-  test('tem palavras de sobra: 2 sílabas para fácil e médio, 3 para o difícil', () => {
+  test('tem palavras de sobra: 2 sílabas para os níveis 1 a 3, 3 para os níveis 4 a 6', () => {
     const two = Data.WORDS.filter((w) => w.syllables.length === 2);
     const three = Data.WORDS.filter((w) => w.syllables.length === 3);
-    assert.ok(Data.WORDS.length >= 22, `só ${Data.WORDS.length} palavras`);
+    assert.ok(Data.WORDS.length >= 30, `só ${Data.WORDS.length} palavras`);
     assert.ok(two.length >= 14, 'poucas palavras de 2 sílabas');
-    assert.ok(three.length >= 8, 'poucas palavras de 3 sílabas (o difícil sorteia 8 sem repetir)');
+    assert.ok(three.length >= 12, 'poucas palavras de 3 sílabas (3 níveis sorteiam 8 de cada vez)');
     assert.equal(Data.WORDS.length, two.length + three.length, 'só palavras de 2 ou 3 sílabas');
   });
 
@@ -108,58 +109,66 @@ describe('formsKnownWord', () => {
 });
 
 describe('createGame', () => {
-  test('8 rodadas, e as figuras: 3 no fácil, 4 no médio e no difícil', () => {
-    const options = { easy: 3, medium: 4, hard: 4 };
-    for (const difficulty of LEVELS) {
-      for (const game of games(difficulty)) {
+  test('8 rodadas, e as figuras: 3, 3, 4, 3, 4 e 5', () => {
+    const options = { 1: 3, 2: 3, 3: 4, 4: 3, 5: 4, 6: 5 };
+    for (const level of LEVELS) {
+      for (const game of games(level)) {
         assert.equal(game.total, 8);
-        for (const round of game.rounds) assert.equal(round.options.length, options[difficulty], difficulty);
+        assert.equal(game.level, level);
+        for (const round of game.rounds) assert.equal(round.options.length, options[level], `nível ${level}`);
       }
     }
   });
 
-  test('dificuldade desconhecida vira fácil', () => {
-    assert.equal(Logic.createGame('x').difficulty, 'easy');
+  test('nível desconhecido vira o 1', () => {
+    for (const bad of ['x', 0, 7, undefined, null, NaN]) assert.equal(Logic.createGame(bad).level, 1, String(bad));
   });
 
-  test('fácil e médio sorteiam palavras de 2 sílabas; o difícil, de 3', () => {
-    for (const difficulty of LEVELS) {
-      const want = difficulty === 'hard' ? 3 : 2;
-      for (const game of games(difficulty)) {
-        for (const round of game.rounds) assert.equal(round.syllables.length, want, `${difficulty}: ${round.word}`);
+  test('níveis 1 a 3 sorteiam palavras de 2 sílabas; 4 a 6, de 3', () => {
+    for (const level of LEVELS) {
+      for (const game of games(level)) {
+        for (const round of game.rounds) assert.equal(round.syllables.length, syllablesOf(level), `nível ${level}: ${round.word}`);
       }
     }
   });
 
   test('as palavras da partida não se repetem', () => {
-    for (const difficulty of LEVELS) {
-      for (const game of games(difficulty)) {
+    for (const level of LEVELS) {
+      for (const game of games(level)) {
         const words = game.rounds.map((r) => r.word);
-        assert.equal(new Set(words).size, words.length, `${difficulty}: ${words}`);
+        assert.equal(new Set(words).size, words.length, `nível ${level}: ${words}`);
       }
     }
   });
 
   test('a palavra muda de uma partida para outra', () => {
-    const first = new Set(games('easy').map((g) => g.rounds[0].word));
-    assert.ok(first.size >= 5, `sempre começa com as mesmas palavras: ${[...first]}`);
+    for (const level of [1, 4]) {
+      const first = new Set(games(level).map((g) => g.rounds[0].word));
+      assert.ok(first.size >= 5, `nível ${level}: sempre começa com as mesmas palavras: ${[...first]}`);
+    }
   });
 
-  test('todas as posições da lacuna aparecem, por igual', () => {
-    for (const difficulty of LEVELS) {
-      const syllables = difficulty === 'hard' ? 3 : 2;
-      for (const game of games(difficulty)) {
+  test('nível 1: a lacuna é sempre a última sílaba (completar o fim da palavra)', () => {
+    for (const game of games(1)) {
+      for (const round of game.rounds) assert.equal(round.blankIndex, round.syllables.length - 1, round.word);
+    }
+  });
+
+  test('níveis 2 a 6: todas as posições da lacuna aparecem, por igual', () => {
+    for (const level of [2, 3, 4, 5, 6]) {
+      const syllables = syllablesOf(level);
+      for (const game of games(level)) {
         const counts = Array(syllables).fill(0);
         for (const round of game.rounds) counts[round.blankIndex]++;
-        assert.ok(Math.max(...counts) - Math.min(...counts) <= 1, `${difficulty}: ${counts}`);
-        assert.ok(Math.min(...counts) >= 2, `${difficulty}: ${counts}`);
+        assert.ok(Math.max(...counts) - Math.min(...counts) <= 1, `nível ${level}: ${counts}`);
+        assert.ok(Math.min(...counts) >= 2, `nível ${level}: ${counts}`);
       }
     }
   });
 
   test('cada rodada tem uma só figura certa, entre sílabas diferentes', () => {
-    for (const difficulty of LEVELS) {
-      for (const game of games(difficulty)) {
+    for (const level of LEVELS) {
+      for (const game of games(level)) {
         for (const round of game.rounds) {
           assert.equal(new Set(round.optionKeys).size, round.optionKeys.length, round.word);
           assert.equal(round.optionKeys.filter((k) => k === round.answerKey).length, 1, round.word);
@@ -172,14 +181,14 @@ describe('createGame', () => {
   });
 
   test('NENHUMA figura errada forma outra palavra que a criança conhece', () => {
-    for (const difficulty of LEVELS) {
-      for (const game of games(difficulty)) {
+    for (const level of LEVELS) {
+      for (const game of games(level)) {
         for (const round of game.rounds) {
           for (const key of round.optionKeys) {
             if (key === round.answerKey) continue;
             const copy = [...round.syllables];
             copy[round.blankIndex] = key;
-            assert.ok(!Data.isKnownWord(copy.join('')), `${difficulty}: ${round.word} com ${key} = ${copy.join('')}`);
+            assert.ok(!Data.isKnownWord(copy.join('')), `nível ${level}: ${round.word} com ${key} = ${copy.join('')}`);
           }
         }
       }
@@ -189,7 +198,7 @@ describe('createGame', () => {
   test('só a sílaba certa completa a palavra', () => {
     // Confere por força bruta: das figuras da rodada, só a certa forma uma palavra do banco
     const bank = new Set(Data.WORDS.map((w) => w.word));
-    for (const game of games('medium')) {
+    for (const game of games(3).concat(games(6))) {
       for (const round of game.rounds) {
         const completing = round.optionKeys.filter((key) => {
           const copy = [...round.syllables];
@@ -201,8 +210,8 @@ describe('createGame', () => {
     }
   });
 
-  test('fácil: as erradas são bem diferentes (outra consoante e outra vogal, consoantes distintas)', () => {
-    for (const game of games('easy')) {
+  test('níveis 1, 2 e 4: as erradas são bem diferentes (outra consoante e outra vogal, consoantes distintas)', () => {
+    for (const game of [1, 2, 4].flatMap((level) => games(level))) {
       for (const round of game.rounds) {
         const wrongs = round.optionKeys.filter((k) => k !== round.answerKey);
         for (const w of wrongs) {
@@ -214,18 +223,18 @@ describe('createGame', () => {
     }
   });
 
-  test('médio e difícil: uma errada tem a mesma consoante e outra a mesma vogal da certa', () => {
-    for (const difficulty of ['medium', 'hard']) {
-      for (const game of games(difficulty)) {
+  test('níveis 3, 5 e 6: uma errada tem a mesma consoante e outra a mesma vogal da certa', () => {
+    for (const level of [3, 5, 6]) {
+      for (const game of games(level)) {
         for (const round of game.rounds) {
           const wrongs = round.optionKeys.filter((k) => k !== round.answerKey);
           assert.ok(
             wrongs.some((w) => Data.consonantOf(w) === Data.consonantOf(round.answerKey)),
-            `${difficulty} ${round.word}: nenhuma com a mesma consoante em ${wrongs}`,
+            `nível ${level} ${round.word}: nenhuma com a mesma consoante em ${wrongs}`,
           );
           assert.ok(
             wrongs.some((w) => Data.vowelOf(w) === Data.vowelOf(round.answerKey)),
-            `${difficulty} ${round.word}: nenhuma com a mesma vogal em ${wrongs}`,
+            `nível ${level} ${round.word}: nenhuma com a mesma vogal em ${wrongs}`,
           );
         }
       }
@@ -234,7 +243,7 @@ describe('createGame', () => {
 
   test('a posição da figura certa varia', () => {
     const positions = new Set();
-    for (const game of games('medium')) {
+    for (const game of games(3)) {
       for (const round of game.rounds) positions.add(round.optionKeys.indexOf(round.answerKey));
     }
     assert.equal(positions.size, 4);
@@ -274,7 +283,7 @@ describe('falas e tela', () => {
 
 describe('partida', () => {
   test('o motor de rodadas funciona com as sílabas como chave', () => {
-    let game = Logic.createGame('easy', { random: prng(4) });
+    let game = Logic.createGame(1, { random: prng(4) });
     const round = Logic.currentRound(game);
     const wrong = round.optionKeys.find((k) => k !== round.answerKey);
     game = Logic.answer(game, wrong, 1).state;

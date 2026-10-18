@@ -16,25 +16,25 @@ const shownWord = (game) =>
 
 test.describe('rodada', () => {
   test('mostra o desenho, a palavra com a lacuna e as figuras do nível', async ({ game }) => {
-    for (const [difficulty, options, syllables] of [['easy', 3, 2], ['medium', 4, 2], ['hard', 4, 3]]) {
-      await game.open({ difficulty });
+    for (const [level, options, syllables] of [[1, 3, 2], [2, 3, 2], [3, 4, 2], [4, 3, 3], [5, 4, 3], [6, 5, 3]]) {
+      await game.open({ level });
       const round = game.plan.rounds[0];
 
-      await expect(game.page.locator('#word .syl'), difficulty).toHaveCount(syllables);
+      await expect(game.page.locator('#word .syl'), `nível ${level}`).toHaveCount(syllables);
       await expect(game.page.locator('#word .blank')).toHaveCount(1);
-      expect(await shownWord(game), difficulty).toEqual(
+      expect(await shownWord(game), `nível ${level}`).toEqual(
         Logic.displayFor(round).map((p) => (p.blank ? '_' : p.text)),
       );
-      await expect(game.options(), difficulty).toHaveCount(options);
+      await expect(game.options(), `nível ${level}`).toHaveCount(options);
       await expect(game.page.locator('#picture')).toHaveAttribute('src', `img/${round.id}.svg`);
       await expect(game.page.locator('#progress .dot')).toHaveCount(8);
-      expect(await game.spoken(), difficulty).toEqual([Logic.promptFor(round)]);
+      expect(await game.spoken(), `nível ${level}`).toEqual([Logic.promptFor(round)]);
       await game.page.reload();
     }
   });
 
   test('as figuras de resposta são sílabas em maiúsculas, com a certa entre elas', async ({ game }) => {
-    await game.open({ difficulty: 'medium' });
+    await game.open({ level: 3 });
     const round = game.plan.rounds[0];
     const texts = await game.options().evaluateAll((els) => els.map((e) => e.textContent));
     expect(texts).toEqual(round.optionKeys.map((k) => k.toUpperCase()));
@@ -42,11 +42,11 @@ test.describe('rodada', () => {
   });
 
   test('o desenho de TODAS as palavras da partida carrega', async ({ game }) => {
-    for (const difficulty of ['easy', 'hard']) {
-      await game.open({ difficulty });
+    for (const level of [1, 4, 6]) {
+      await game.open({ level });
       for (let i = 0; i < 8; i++) {
         const ok = await game.page.locator('#picture').evaluate((img) => img.complete && img.naturalWidth > 0);
-        expect(ok, `${difficulty}: desenho da rodada ${i + 1}`).toBe(true);
+        expect(ok, `nível ${level}: desenho da rodada ${i + 1}`).toBe(true);
         await game.answerRight();
       }
       await game.page.reload();
@@ -90,7 +90,7 @@ test.describe('responder', () => {
   });
 
   test('depois de 2 erros a certa respira, a Mia pensa e a pergunta se repete', async ({ game }) => {
-    await game.open({ difficulty: 'medium' });
+    await game.open({ level: 3 });
     const round = game.plan.rounds[0];
 
     await game.option(await game.wrongSymbol(0)).click();
@@ -103,7 +103,7 @@ test.describe('responder', () => {
   });
 
   test('uma partida perfeita termina com 3 estrelas e envia o resultado', async ({ game }) => {
-    await game.open({ difficulty: 'easy' });
+    await game.open({ level: 1 });
     await game.solve();
 
     await expect(game.page.locator('#result-modal')).toBeVisible();
@@ -112,7 +112,7 @@ test.describe('responder', () => {
     expect(others).toHaveLength(0);
     expect(msg).toMatchObject({
       gameId: 'missing-syllable',
-      difficulty: 'easy',
+      level: 1,
       moves: 0,
       matches: 8,
       stars: 3,
@@ -120,17 +120,17 @@ test.describe('responder', () => {
   });
 
   test('erros viram o "moves" do resultado', async ({ game }) => {
-    await game.open({ difficulty: 'hard' });
+    await game.open({ level: 6 });
     for (let i = 0; i < 8; i++) {
       if (i < 3) await game.option(await game.wrongSymbol()).click();
       await game.answerRight();
     }
     const [msg] = await complete(game);
-    expect(msg).toMatchObject({ gameId: 'missing-syllable', difficulty: 'hard', moves: 3, stars: 2 });
+    expect(msg).toMatchObject({ gameId: 'missing-syllable', level: 6, moves: 3, stars: 1 });
   });
 
   test('a palavra da tela é sempre a do desenho, em todas as rodadas', async ({ game }) => {
-    await game.open({ difficulty: 'hard' });
+    await game.open({ level: 6 });
     for (let i = 0; i < 8; i++) {
       const round = game.plan.rounds[i];
       const shown = await shownWord(game);

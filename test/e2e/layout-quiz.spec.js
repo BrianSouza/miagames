@@ -7,6 +7,9 @@ const QUIZ_GAMES = ['which-letter', 'how-many', 'missing-syllable'];
 // Jogos em que cada rodada tem um tamanho de tela diferente (palavras de 4 a 6 letras)
 const CHECK_EVERY_ROUND = new Set(['missing-syllable']);
 
+// Os 6 níveis; nos jogos que conferem todas as rodadas, os 4 que mudam a tela (o custo é maior)
+const levelsFor = (gameId) => (CHECK_EVERY_ROUND.has(gameId) ? [1, 3, 4, 6] : [1, 2, 3, 4, 5, 6]);
+
 const VIEWPORTS = {
   'celular pequeno (320×568)': { width: 320, height: 568 },
   'celular (360×640)': { width: 360, height: 640 },
@@ -99,9 +102,9 @@ for (const gameId of QUIZ_GAMES) {
       test.describe(name, () => {
         test.use({ viewport });
 
-        for (const difficulty of ['easy', 'medium', 'hard']) {
-          test(`${difficulty}: tudo cabe, sem rolar e sem se sobrepor`, async ({ game }) => {
-            await game.open({ difficulty });
+        for (const level of levelsFor(gameId)) {
+          test(`nível ${level}: tudo cabe, sem rolar e sem se sobrepor`, async ({ game }) => {
+            await game.open({ level });
             await checkLayout(game, viewport);
 
             if (CHECK_EVERY_ROUND.has(gameId)) {
@@ -126,7 +129,7 @@ for (const gameId of QUIZ_GAMES) {
 
     test('as figuras se reajustam ao girar o aparelho', async ({ game, page }) => {
       await page.setViewportSize({ width: 360, height: 640 });
-      await game.open({ difficulty: 'hard' });
+      await game.open({ level: 6 });
       const portrait = (await game.options().first().boundingBox()).width;
 
       await page.setViewportSize({ width: 844, height: 390 });

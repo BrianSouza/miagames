@@ -26,12 +26,12 @@ miagames/
 │   │   ├── theme/                 ← Cores, espaçamento, ThemeData
 │   │   └── widgets/               ← ExitGuard, bloqueio parental, estrelas, Mia (MiaAvatar), cartão de jogo
 │   ├── modules/
-│   │   ├── game_module.dart       ← Contrato de um jogo + dificuldades
+│   │   ├── game_module.dart       ← Contrato de um jogo + os 6 níveis
 │   │   ├── game_registry.dart     ← Lista de jogos exibidos na Home
-│   │   └── recommended_difficulty.dart ← Nível que a Mia sugere (primeiro sem 3 estrelas)
+│   │   └── level_progress.dart    ← Níveis abertos (2 estrelas abrem o próximo) e o que a Mia sugere
 │   └── screens/
 │       ├── home_screen.dart       ← A Mia acena + cartões grandes dos jogos (grade adaptativa)
-│       ├── difficulty_sheet.dart  ← 3 botões grandes de nível, com recorde e a sugestão da Mia
+│       ├── level_sheet.dart       ← Trilha dos 6 níveis: estrelas, cadeados e a sugestão da Mia
 │       ├── game_screen.dart       ← WebView + ponte com o jogo
 │       └── parents_screen.dart    ← Área dos pais
 ├── assets/images/                 ← Ícones dos jogos e a gatinha Mia em 4 poses (SVG)
@@ -85,7 +85,7 @@ não deve mudar. Os PNGs de `assets/icon` e `assets/splash` são só entrada das
 
 | Direção | Mensagem | Para quê |
 |---------|----------|----------|
-| Flutter → jogo | `window.handleFlutterMessage({type: 'INIT', difficulty, gameId, sound, best})` | Inicia a partida com a dificuldade, a preferência de som e o recorde atual (`{stars, moves}` ou `null`) |
+| Flutter → jogo | `window.handleFlutterMessage({type: 'INIT', level, gameId, sound, best})` | Inicia a partida no nível (1 a 6), a preferência de som e o recorde atual (`{stars, moves}` ou `null`) |
 | jogo → Flutter | `SPEAK {text}` | Fala um texto. A voz do navegador não funciona na WebView do Android |
 | jogo → Flutter | `NAVIGATE_BACK` | Volta para a Home |
 | jogo → Flutter | `GAME_COMPLETE {stars, moves, timeSeconds}` | Fim da partida: o Flutter salva o recorde |
@@ -99,21 +99,40 @@ mensagens malformadas, e a WebView só navega para os arquivos locais do jogo.
 2. Declarar a pasta **e cada subpasta** em `flutter.assets` no `pubspec.yaml`, porque o Flutter não inclui subpastas sozinho (`test/pubspec_assets_test.dart` confere)
 3. Adicionar um `GameModule` em `lib/modules/game_registry.dart`, com a ilustração em `iconAsset`
 
-A Home, o seletor de dificuldade e a tela de jogo funcionam automaticamente.
+A Home, a trilha de níveis e a tela de jogo funcionam automaticamente. O jogo recebe `level` (1 a 6) e deve ter uma tabela `LEVELS` com 6 linhas.
 
 ---
 
 ## 🎮 Os jogos
 
-| Jogo | O que a criança faz | Níveis |
-|------|---------------------|--------|
-| **Jogo da Memória** | Acha os pares de letras e números | 6, 8 e 10 pares; números até 9, 20 e 50 |
-| **Qual é a letra?** | A voz fala o nome e a criança toca na figura certa | 3 letras · 4 letras ou números até 20 · 6 letras ou números até 50 |
-| **Quantos tem?** | Conta os objetos (tocar em cada um fala o número) e escolhe quantos são | 1 a 5 · 1 a 10 · 1 a 20 |
-| **Qual sílaba falta?** | Vê o desenho de uma palavra e a palavra com uma sílaba faltando (`BO _`); escolhe a que completa | palavras de 2 sílabas, 3 respostas bem diferentes · 2 sílabas, 4 respostas parecidas · palavras de 3 sílabas |
+| Jogo | O que a criança faz | O que cresce nos 6 níveis |
+|------|---------------------|---------------------------|
+| **Jogo da Memória** | Acha os pares de letras e números | 4, 6, 8, 10, 12 e 14 pares; números até 5, 9, 15, 20, 30 e 50 |
+| **Qual é a letra?** | A voz fala o nome e a criança toca na figura certa | letras A–M (3 figuras) → todas as letras → com números até 10, 20, 30 e 50; 3 a 6 figuras; do nível 4 em diante, uma figura parecida (E/F, M/N, 13/23) |
+| **Quantos tem?** | Conta os objetos (tocar em cada um fala o número) e escolhe quantos são | contar até 3, 5, 10, 15, 20 e 20 (com 5 respostas) |
+| **Qual sílaba falta?** | Vê o desenho de uma palavra e a palavra com uma sílaba faltando (`BO _`); escolhe a que completa | palavras de 2 sílabas (a lacuna é sempre a última no nível 1) → 2 sílabas com respostas parecidas → palavras de 3 sílabas, com 3, 4 e 5 respostas |
 
-Os jogos de responder (todos menos a Memória) têm **8 rodadas**. As estrelas vêm dos acertos
-**de primeira**: 7 de 8 ou mais = 3 estrelas, 5 de 8 ou mais = 2, senão 1. A pontuação que vai
+### Trilha de 6 níveis
+
+Cada jogo tem **6 níveis**. Só o 1 começa aberto; **cada nível novo abre quando o anterior rende 2 estrelas**
+(o cadeado some e a Mia comemora "Nível 3 aberto!", com um botão para ir direto jogá-lo).
+A Mia sugere o nível mais alto aberto.
+
+Subir fica **mais difícil a cada degrau**. Nos jogos de responder (8 rodadas), as estrelas vêm dos acertos **de primeira**:
+
+| Nível | 1 | 2 | 3 | 4 | 5 | 6 |
+|-------|---|---|---|---|---|---|
+| 2 estrelas (abre o próximo) | 4 de 8 | 5 de 8 | 5 de 8 | 6 de 8 | 6 de 8 | 7 de 8 |
+| 3 estrelas | 6 de 8 | 7 de 8 | 7 de 8 | 7 de 8 | 8 de 8 | 8 de 8 |
+
+Na Memória, a razão pares/jogadas exigida nos 3 e 2 estrelas vai de 0,70/0,50 (níveis 1 e 2) a 0,55/0,40 (nível 6): o
+tabuleiro maior já pesa mais na sorte, e o que cresce de verdade é o número de pares e o alcance dos números.
+A tabela de cada jogo está em `LEVELS` no arquivo de regras (`*-logic.js`) e os textos do app são conferidos contra ela nos testes.
+
+Com 1 estrela, a voz diz "Quase! Vamos tentar de novo?" (sem dizer que errou). Os recordes de uma versão
+anterior (que tinha só 3 níveis, `easy`/`medium`/`hard`) não são aproveitados.
+
+Os jogos de responder têm **8 rodadas**. A pontuação que vai
 para o Flutter (`moves`) é o **número de erros**, e a Área dos pais a chama de "erros"
 (na Memória, "jogadas"). Errar não tem castigo: a figura some de leve, a voz diz "Tente de novo!"
 e, depois de 2 erros na mesma rodada, a resposta certa "respira" e a pergunta se repete.
@@ -129,15 +148,15 @@ e, depois de 2 erros na mesma rodada, a resposta certa "respira" e a pergunta se
 - Objetos (estrela, bola, maçã, peixe, flor) em **fileiras de 5**, fáceis de contar de 5 em 5
 - Tocar num objeto fala o próximo número ("um", "dois"...) e mostra o número ao lado: **um objeto, um número**
 - A pergunta tem o gênero certo: "Quantas estrelas…", "Quantos peixes…"
-- Fora do fácil, uma das respostas é vizinha da certa (errar por um é o engano mais comum); as figuras vêm em ordem crescente
-- No difícil, metade das rodadas passa de 10 objetos
+- A partir do nível 3, uma das respostas é vizinha da certa (errar por um é o engano mais comum); as figuras vêm em ordem crescente
+- Nos níveis 4 a 6, metade das rodadas passa de 10 objetos
 
 ### Qual sílaba falta?
 
-- 27 palavras com desenho próprio (`tool/words_art.py`): 19 de duas sílabas e 8 de três, todas só com sílabas "consoante + vogal" (BO-LA, CA-SA)
+- 31 palavras com desenho próprio (`tool/words_art.py`): 19 de duas sílabas e 12 de três, todas só com sílabas "consoante + vogal" (BO-LA, CA-SA)
 - A voz diz "Bola. Qual sílaba falta?". Ao acertar, a sílaba entra na lacuna e a voz soletra e fala a palavra ("bô, lá, bola!")
 - **Nenhuma resposta errada forma outra palavra** que a criança conheça: BO_A com CA seria "boca". A conferência usa as palavras do jogo e uma lista de outras palavras comuns (`OTHER_WORDS` em `words.js`)
-- Fácil: respostas bem diferentes da certa (outra consoante e outra vogal). Médio e difícil: parecidas, uma com a mesma consoante (BO → BA), uma com a mesma vogal (BO → LO) e uma qualquer
+- Níveis 1, 2 e 4: respostas bem diferentes da certa (outra consoante e outra vogal). Níveis 3, 5 e 6: parecidas, uma com a mesma consoante (BO → BA), uma com a mesma vogal (BO → LO) e as demais quaisquer
 - Ao errar, a voz fala a sílaba que a criança escolheu ("cá. Tente de novo!"), para ela aprender o som
 - `sayFor` (em `words.js`) dá a pronúncia de cada sílaba solta, com a vogal acentuada ("to" → "tô"), porque o motor de voz leria "tu". Uma sílaba que ainda soe estranha no aparelho se corrige em `SAY_OVERRIDES`, sem mexer no resto
 - Para trocar ou acrescentar uma palavra: edite `words.js`, desenhe-a em `tool/words_art.py` e rode `python3 tool/generate_illustrations.py`. Os testes conferem sílabas, desenho e que nenhuma resposta errada forme palavra
@@ -149,19 +168,19 @@ carta, a voz fala o **nome** da letra ("Bê", "Cê") ou do número ("três"); ao
 repete o nome e elogia. Há efeitos sonoros ao virar, acertar, errar e vencer.
 
 - Cada partida mistura cerca de 60% de letras (A–Z) e 40% de números
-- O alcance dos números cresce com a dificuldade: **fácil de 0 a 9, médio de 0 a 20 e difícil de 0 a 50**.
-  Os números são falados por extenso ("Trinta e sete"); o seletor de dificuldade mostra o alcance de cada nível
+- O alcance dos números cresce com o nível: **0–5, 0–9, 0–15, 0–20, 0–30 e 0–50**.
+  Os números são falados por extenso ("Trinta e sete"); o seletor mostra o que cada nível traz
 - Letras em azul e números em rosa; todas as letras têm a mesma cor, então a cor não entrega o par
 - **Nunca aparecem juntos símbolos que se confundem**: "O" com "0", "I" com "1" e números com os
   algarismos invertidos (12 com 21): o erro não seria de memória, e sim de uma distinção que a criança ainda não domina
 - Fonte **Andika**, desenhada para quem está aprendendo a ler: o "I" tem serifas e não se confunde com o "1" nem com o "L"
 - A voz usa o nome da letra em português, e não o que o motor de voz leria sozinho (que leria "E" como a palavra "e")
 
-| Nível   | Pares | Colunas |
-|---------|-------|---------|
-| Fácil   | 6     | 3       |
-| Médio   | 8     | 4       |
-| Difícil | 10    | 4       |
+| Nível | 1 | 2 | 3 | 4 | 5 | 6 |
+|-------|---|---|---|---|---|---|
+| Pares | 4 | 6 | 8 | 10 | 12 | 14 |
+
+O número de colunas não é fixo: o tabuleiro escolhe, a cada tela, o arranjo que dá as maiores cartas.
 
 ```
 playing ─(1ª carta: inicia o cronômetro)→ playing ─(2ª carta)→ checking (800ms)
@@ -238,7 +257,7 @@ Para cobrir um jogo novo, abra-o com `fixtures.js` ou crie uma fixture parecida.
 - A **Mia sugere o nível**: o primeiro que ainda não tem as 3 estrelas (o botão "respira" por alguns segundos)
 - Tela de parabéns com confete (desligado para quem pede menos movimento), estrelas que aparecem uma a uma e dois botões grandes com ícone
 - **Funciona em pé e deitado**: a grade da Home e o tabuleiro se ajustam à tela
-- Voz em pt-BR: nomes dos jogos, das dificuldades, das letras e dos números, e comemoração a cada par
+- Voz em pt-BR: nomes dos jogos, dos níveis, das letras e dos números, e comemoração a cada par
 - Áreas de toque de no mínimo 56px (botões do jogo com 60px, os da tela de parabéns com 88px)
 - Texto e botões com contraste ≥ 4.5:1 (WCAG AA)
 - Sair do jogo exige **segurar** o botão voltar do jogo ou tocar **duas vezes** no voltar do sistema

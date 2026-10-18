@@ -24,10 +24,10 @@
   /** Depois de tantos erros na mesma rodada, a resposta certa "respira" como dica */
   var HINT_AFTER_MISSES = 2;
 
-  /** Cria uma partida com as `rounds` dadas. `previousRound` identifica a partida (ver next) */
-  function createState(difficulty, rounds, previousRound) {
+  /** Cria uma partida do nível `level` com as `rounds` dadas. `previousRound` identifica a partida (ver next) */
+  function createState(level, rounds, previousRound) {
     return {
-      difficulty: difficulty,
+      level: level,
       rounds: rounds,
       total: rounds.length,
       index: 0,
@@ -114,7 +114,7 @@
   }
 
   function calcStars(state) {
-    return Utils.starsForAccuracy(state.firstTry, state.total);
+    return Utils.starsForAccuracy(state.firstTry, state.total, state.level);
   }
 
   return {

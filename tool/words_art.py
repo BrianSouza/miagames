@@ -285,6 +285,39 @@ def toucan():
             + S('M40 90 V94 M50 90 V94', '#FF9F43', 4))
 
 
+def shirt():
+    return (shape('M30 12 L8 30 L22 46 L30 40 V90 H70 V40 L78 46 L92 30 L70 12 Q50 28 30 12 Z', '#54A0FF', '#2F6FBF')
+            + S('M30 12 Q50 28 70 12', '#2F6FBF', 3.5)
+            + S('M50 28 V50', '#2F6FBF', 3) + circle(50, 36, 2.4, '#fff') + circle(50, 46, 2.4, '#fff')
+            + S('M30 40 V90 M70 40 V90', '#2F6FBF', 3.5, ' opacity="0.0"'))
+
+
+def potato():
+    return (shape('M16 56 Q8 34 32 22 Q54 12 76 24 Q96 36 88 60 Q80 84 52 86 Q24 90 16 56 Z', '#C69C6D', '#8B6A3E')
+            + circle(34, 44, 3.4, '#8B6A3E') + circle(58, 36, 3.4, '#8B6A3E') + circle(66, 60, 3.4, '#8B6A3E')
+            + circle(40, 66, 3.4, '#8B6A3E') + circle(24, 58, 2.6, '#8B6A3E')
+            + ellipse(30, 32, 7, 4, '#fff', None, 0, ' opacity="0.35" transform="rotate(-20 30 32)"'))
+
+
+def doll():
+    return (circle(26, 52, 14, '#8D5A2B', '#5D3A1A') + circle(74, 52, 14, '#8D5A2B', '#5D3A1A')
+            + shape('M14 44 L26 52 L14 60 Z', '#E53935', '#B71C1C', 2.5) + shape('M86 44 L74 52 L86 60 Z', '#E53935', '#B71C1C', 2.5)
+            + circle(50, 46, 28, '#F2C39A', '#B9855A')
+            + shape('M22 44 Q24 16 50 16 Q76 16 78 44 Q64 30 50 32 Q36 30 22 44 Z', '#8D5A2B', '#5D3A1A')
+            + eyes(50, 50, 11, 3.6) + circle(36, 60, 5, '#FF9AA2') + circle(64, 60, 5, '#FF9AA2')
+            + S('M42 62 Q50 70 58 62', DARK, 3)
+            + shape('M30 74 L70 74 L82 96 L18 96 Z', '#FF6B9A', '#C2185B'))
+
+
+def camel():
+    return (shape('M20 50 Q18 36 30 34 Q38 20 48 34 Q58 20 68 34 Q82 34 80 52 Q80 62 72 64 H28 Q20 62 20 50 Z', '#D9A55B', '#A97A2E')
+            + shape('M72 44 Q84 36 86 22 Q86 14 94 14 Q100 16 98 24 Q92 24 92 30 Q90 46 78 60 Z', '#D9A55B', '#A97A2E')
+            + circle(92, 20, 2.2, DARK)
+            + S('M30 64 V90 M42 64 V90 M60 64 V90 M72 64 V90', '#A97A2E', 6)
+            + S('M20 50 Q10 54 10 66', '#A97A2E', 4)
+            + rect(0, 90, 100, 6, '#F2D49B', None, 3))
+
+
 def cat():
     """O gato: a cabeça da Mia, em cinza e sem o laço, para não ser confundido com a mascote"""
     from mia import head
@@ -300,4 +333,5 @@ WORDS = {
     'bolo': cake, 'rato': mouse, 'sino': bell, 'dado': die, 'cama': bed, 'lata': can,
     'vela': candle, 'banana': banana, 'janela': window, 'tomate': tomato, 'sapato': shoe,
     'panela': pot, 'macaco': monkey, 'coruja': owl, 'tucano': toucan,
+    'camisa': shirt, 'batata': potato, 'boneca': doll, 'camelo': camel,
 }

@@ -47,7 +47,7 @@
     Bridge.onInit(function (data) {
       Sounds.setEnabled(data.sound !== false);
       best = data.best || null;
-      startGame(data.difficulty);
+      startGame(data.level);
     });
 
     var header = root.GameKit.createHeader({ onReset: resetGame, onListen: listen });
@@ -56,12 +56,12 @@
     root.addEventListener('resize', layout);
 
     // ── Ciclo de vida ───────────────────────────────────────────────────────────
-    function startGame(difficulty) {
+    function startGame(level) {
       clearTimeout(advanceTimer);   // uma pausa pendente não pode atingir o jogo novo
       advanceTimer = null;
 
       var previousRound = state ? state.round : 0;
-      state = Logic.createGame(difficulty || (state && state.difficulty), {
+      state = Logic.createGame(level || (state && state.level), {
         previousRound: previousRound,
       });
 
@@ -72,7 +72,7 @@
     }
 
     function resetGame() {
-      startGame(state ? state.difficulty : 'easy');
+      startGame(state ? state.level : 1);
     }
 
     function prompt() {
@@ -188,14 +188,14 @@
 
       GameResult.show(stars, newRecord);
       Sounds.play('win');
-      speak(newRecord ? 'Parabéns! Novo recorde!' : 'Parabéns! Você acertou tudo!');
+      speak(root.GameUtils.resultSpeech(stars, newRecord));
 
       // O Flutter salva o recorde; aqui só atualizamos para o "Jogar de novo"
       if (!best || newRecord) best = { stars: stars, moves: state.errors };
 
       Bridge.complete({
         gameId:      config.gameId,
-        difficulty:  state.difficulty,
+        level:       state.level,
         moves:       state.errors,     // erros: quanto menos, melhor
         matches:     state.solved,
         timeSeconds: Math.floor(elapsed / 1000),

@@ -12,23 +12,29 @@
       require('../_shared/symbols.js'),
       require('../_shared/quiz.js'),
       require('./words.js'),
+      require('../_shared/game-utils.js'),
     );
   } else {
-    root.MissingSyllableLogic = factory(root.GameSymbols, root.GameQuiz, root.SyllableWords);
+    root.MissingSyllableLogic = factory(root.GameSymbols, root.GameQuiz, root.SyllableWords, root.GameUtils);
   }
-})(this, function (Symbols, Quiz, Data) {
+})(this, function (Symbols, Quiz, Data, Utils) {
   'use strict';
 
-  // syllables: quantas sílabas têm as palavras do nível. similar: as figuras erradas se
-  // parecem com a certa (mesma consoante ou mesma vogal); senão são bem diferentes.
-  var DIFFICULTY = {
-    easy:   { rounds: 8, syllables: 2, options: 3, similar: false },
-    medium: { rounds: 8, syllables: 2, options: 4, similar: true },
-    hard:   { rounds: 8, syllables: 3, options: 4, similar: true },
-  };
+  // Os 6 níveis (do 1 ao 6). syllables: quantas sílabas têm as palavras. options: quantas figuras.
+  // similar: as figuras erradas se parecem com a certa (mesma consoante ou mesma vogal); senão são
+  // bem diferentes. blank: 'last' = a lacuna é sempre a última sílaba (completar o fim da palavra,
+  // o mais fácil); 'any' = pode ser qualquer uma.
+  var LEVELS = [
+    { rounds: 8, syllables: 2, options: 3, similar: false, blank: 'last' },
+    { rounds: 8, syllables: 2, options: 3, similar: false, blank: 'any' },
+    { rounds: 8, syllables: 2, options: 4, similar: true,  blank: 'any' },
+    { rounds: 8, syllables: 3, options: 3, similar: false, blank: 'any' },
+    { rounds: 8, syllables: 3, options: 4, similar: true,  blank: 'any' },
+    { rounds: 8, syllables: 3, options: 5, similar: true,  blank: 'any' },
+  ];
 
-  function configFor(difficulty) {
-    return DIFFICULTY[difficulty] || DIFFICULTY.easy;
+  function configFor(level) {
+    return LEVELS[Utils.clampLevel(level) - 1];
   }
 
   function capitalize(text) {
@@ -118,22 +124,27 @@
     return Symbols.shuffle(chosen.concat([answer]), random);
   }
 
-  /** Onde fica a lacuna em cada rodada: todas as posições aparecem, e se repetem por igual */
-  function pickBlankPositions(rounds, syllables, random) {
+  /**
+   * Onde fica a lacuna em cada rodada. Nos níveis em que pode ser qualquer sílaba, todas as
+   * posições aparecem, por igual; no nível 1 é sempre a última.
+   */
+  function pickBlankPositions(cfg, random) {
     var positions = [];
-    for (var i = 0; i < rounds; i++) positions.push(i % syllables);
+    for (var i = 0; i < cfg.rounds; i++) {
+      positions.push(cfg.blank === 'last' ? cfg.syllables - 1 : i % cfg.syllables);
+    }
     return Symbols.shuffle(positions, random);
   }
 
   /** Cria uma partida. `previousRound` identifica a partida (ver Quiz.next) */
-  function createGame(difficulty, options) {
+  function createGame(level, options) {
     var opts = options || {};
-    var key = DIFFICULTY[difficulty] ? difficulty : 'easy';
-    var cfg = DIFFICULTY[key];
+    var key = Utils.clampLevel(level);
+    var cfg = LEVELS[key - 1];
 
     var pool = Data.WORDS.filter(function (w) { return w.syllables.length === cfg.syllables; });
     var words = Symbols.shuffle(pool, opts.random).slice(0, cfg.rounds);
-    var positions = pickBlankPositions(cfg.rounds, cfg.syllables, opts.random);
+    var positions = pickBlankPositions(cfg, opts.random);
 
     var rounds = words.map(function (entry, i) {
       var round = {
@@ -152,7 +163,7 @@
   }
 
   return {
-    DIFFICULTY: DIFFICULTY,
+    LEVELS: LEVELS,
     WORDS: Data.WORDS,
     ADVANCE_DELAY_MS: Quiz.ADVANCE_DELAY_MS,
     HINT_AFTER_MISSES: Quiz.HINT_AFTER_MISSES,

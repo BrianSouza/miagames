@@ -7,6 +7,7 @@ import 'package:miagames/core/widgets/mia_avatar.dart';
 import 'package:miagames/core/widgets/star_rating.dart';
 import 'package:miagames/modules/game_module.dart';
 import 'package:miagames/modules/game_registry.dart';
+import 'package:miagames/modules/level_progress.dart';
 import 'package:miagames/screens/home_screen.dart';
 
 import 'fake_narrator.dart';
@@ -21,7 +22,8 @@ void main() {
     store = await memoryStore();
   });
 
-  Widget app() => MiaGamesApp(narrator: narrator, store: store);
+  Widget app({GameScreenBuilder? gameBuilder}) =>
+      MiaGamesApp(narrator: narrator, store: store, gameBuilder: gameBuilder);
 
   /// Abre a Área dos pais respondendo a conta do bloqueio.
   Future<void> openParentsArea(WidgetTester tester) async {
@@ -76,78 +78,210 @@ void main() {
     }
   });
 
-  testWidgets('tocar no jogo fala o nome e abre as dificuldades', (
+  Finder level(int n) => find.byKey(ValueKey('level-$n'));
+
+  Future<void> openPicker(WidgetTester tester) async {
+    await tester.tap(find.text('Jogo da Memória'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('tocar no jogo fala o nome e mostra a trilha de 6 níveis', (
     tester,
   ) async {
     await tester.pumpWidget(app());
 
-    await tester.tap(find.text('Jogo da Memória'));
-    await tester.pumpAndSettle();
+    await openPicker(tester);
 
     expect(narrator.spoken, ['Jogo da Memória']);
-    for (final label in ['Fácil', 'Médio', 'Difícil']) {
-      expect(find.text(label), findsOneWidget);
+    for (var n = 1; n <= 6; n++) {
+      expect(level(n), findsOneWidget, reason: 'nível $n');
     }
-    expect(
-      find.byType(StarRating),
-      findsNothing,
-      reason: 'nenhum recorde ainda',
-    );
-
-    // O que cada nível traz: números maiores a cada nível, até 50
-    expect(find.text('Letras e números até 9'), findsOneWidget);
-    expect(find.text('Letras e números até 20'), findsOneWidget);
-    expect(find.text('Letras e números até 50'), findsOneWidget);
+    // sem recordes: só o nível 1 está aberto (os outros 5 têm cadeado)
+    expect(find.byIcon(Icons.lock_rounded), findsNWidgets(5));
+    final rating = tester.widget<StarRating>(find.byType(StarRating));
+    expect(rating.stars, 0);
+    expect(find.text('Letras e números até 5 · 4 pares'), findsOneWidget);
   });
 
-  testWidgets('o seletor mostra o recorde de cada dificuldade', (tester) async {
+  testWidgets('cada nível abre com 2 estrelas no anterior', (tester) async {
     await store.saveResult(
       gameId: 'memory',
-      difficulty: GameDifficulty.medium,
+      difficulty: GameDifficulty.level1,
+      stars: 3,
+      moves: 5,
+      timeSeconds: 30,
+    );
+    await store.saveResult(
+      gameId: 'memory',
+      difficulty: GameDifficulty.level2,
       stars: 2,
       moves: 12,
       timeSeconds: 50,
     );
     await tester.pumpWidget(app());
 
-    await tester.tap(find.text('Jogo da Memória'));
+    await openPicker(tester);
+
+    // 1, 2 e 3 abertos (o 3 abriu com as 2 estrelas do 2); 4, 5 e 6 fechados
+    expect(find.byIcon(Icons.lock_rounded), findsNWidgets(3));
+    final stars = tester
+        .widgetList<StarRating>(find.byType(StarRating))
+        .map((r) => r.stars)
+        .toList();
+    expect(stars, [3, 2, 0]);
+  });
+
+  testWidgets('1 estrela não abre o próximo nível', (tester) async {
+    await store.saveResult(
+      gameId: 'memory',
+      difficulty: GameDifficulty.level1,
+      stars: 1,
+      moves: 9,
+      timeSeconds: 30,
+    );
+    await tester.pumpWidget(app());
+
+    await openPicker(tester);
+
+    expect(find.byIcon(Icons.lock_rounded), findsNWidgets(5));
+  });
+
+  testWidgets('tocar num nível fechado fala como abrir e não sai da trilha', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app());
+    await openPicker(tester);
+
+    await tester.tap(level(3));
     await tester.pumpAndSettle();
 
-    final rating = tester.widget<StarRating>(find.byType(StarRating));
-    expect(rating.stars, 2);
-    expect(find.byType(StarRating), findsOneWidget);
+    expect(
+      narrator.spoken.last,
+      'Ganhe duas estrelas no nível dois para abrir este.',
+    );
+    expect(level(3), findsOneWidget, reason: 'a trilha continua na tela');
   });
 
   testWidgets('o seletor destaca o nível que a Mia sugere', (tester) async {
     await store.saveResult(
       gameId: 'memory',
-      difficulty: GameDifficulty.easy,
+      difficulty: GameDifficulty.level1,
       stars: 3,
-      moves: 6,
+      moves: 5,
       timeSeconds: 20,
     );
     await tester.pumpWidget(app());
 
-    await tester.tap(find.text('Jogo da Memória'));
-    await tester.pumpAndSettle();
+    await openPicker(tester);
 
-    // 3 estrelas no fácil: a Mia sugere o médio. A carinha dela (além da que
-    // está no topo da folha) aparece só no botão sugerido.
-    final mediumButton = find.ancestor(
-      of: find.text('Médio'),
-      matching: find.byType(Material),
-    );
+    // 3 estrelas no nível 1: o 2 abriu e a Mia o sugere. A carinha dela (além da
+    // que está no topo da folha) aparece só no nível sugerido.
     expect(
-      find.descendant(of: mediumButton.first, matching: find.byType(MiaAvatar)),
+      find.descendant(of: level(2), matching: find.byType(MiaAvatar)),
       findsOneWidget,
     );
-    final easyButton = find.ancestor(
-      of: find.text('Fácil'),
-      matching: find.byType(Material),
-    );
     expect(
-      find.descendant(of: easyButton.first, matching: find.byType(MiaAvatar)),
+      find.descendant(of: level(1), matching: find.byType(MiaAvatar)),
       findsNothing,
+    );
+  });
+
+  group('abrir um nível novo', () {
+    /// Tela de jogo falsa: "terminar" salva `stars` e volta, como o jogo real faz
+    Widget fakeGame(
+      BuildContext context,
+      GameModule game,
+      GameDifficulty difficulty,
+      int stars,
+    ) {
+      return Scaffold(
+        body: Column(
+          children: [
+            Text('JOGO ${game.id} nível ${difficulty.level}'),
+            TextButton(
+              onPressed: () async {
+                await store.saveResult(
+                  gameId: game.id,
+                  difficulty: difficulty,
+                  stars: stars,
+                  moves: 3,
+                  timeSeconds: 20,
+                );
+                if (context.mounted) Navigator.pop(context);
+              },
+              child: const Text('terminar'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Future<void> playLevel1(WidgetTester tester, int stars) async {
+      await tester.pumpWidget(
+        app(gameBuilder: (c, g, d) => fakeGame(c, g, d, stars)),
+      );
+      await openPicker(tester);
+      await tester.tap(level(1));
+      await tester.pumpAndSettle();
+      expect(find.text('JOGO memory nível 1'), findsOneWidget);
+      expect(narrator.spoken.last, 'Nível um');
+      await tester.tap(find.text('terminar'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('com 2 estrelas, a Mia comemora e o nível 2 abre', (
+      tester,
+    ) async {
+      await playLevel1(tester, 2);
+
+      expect(find.text('Nível 2 aberto!'), findsOneWidget);
+      expect(narrator.spoken.last, 'Parabéns! Você abriu o nível dois!');
+      expect(unlockedCount(store, findGameById('memory')!), 2);
+    });
+
+    testWidgets('o botão de jogar leva direto ao nível novo', (tester) async {
+      await playLevel1(tester, 3);
+
+      await tester.tap(find.byIcon(Icons.play_arrow_rounded));
+      await tester.pumpAndSettle();
+
+      expect(find.text('JOGO memory nível 2'), findsOneWidget);
+    });
+
+    testWidgets('o botão de início fecha a comemoração', (tester) async {
+      await playLevel1(tester, 2);
+
+      await tester.tap(find.byIcon(Icons.home_rounded));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nível 2 aberto!'), findsNothing);
+      expect(find.text('JOGO memory nível 2'), findsNothing);
+    });
+
+    testWidgets('com 1 estrela, nada abre e não há comemoração', (
+      tester,
+    ) async {
+      await playLevel1(tester, 1);
+
+      expect(find.text('Nível 2 aberto!'), findsNothing);
+      expect(unlockedCount(store, findGameById('memory')!), 1);
+    });
+
+    testWidgets(
+      'jogar de novo um nível cujo seguinte já abriu não comemora outra vez',
+      (tester) async {
+        await store.saveResult(
+          gameId: 'memory',
+          difficulty: GameDifficulty.level1,
+          stars: 2,
+          moves: 8,
+          timeSeconds: 30,
+        );
+
+        await playLevel1(tester, 3);
+
+        expect(find.text('Nível 2 aberto!'), findsNothing);
+      },
     );
   });
 
@@ -177,7 +311,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('Difícil'), findsOneWidget);
+    expect(level(6), findsOneWidget);
   });
 
   group('a Home cabe em qualquer tela, sem estourar', () {
@@ -202,7 +336,7 @@ void main() {
         await tester.tap(find.text('Jogo da Memória'));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
-        expect(find.text('Difícil'), findsOneWidget);
+        expect(level(6), findsOneWidget);
       });
     }
 
@@ -257,14 +391,14 @@ void main() {
       addTearDown(tester.view.reset);
       await store.saveResult(
         gameId: 'which-letter',
-        difficulty: GameDifficulty.easy,
+        difficulty: GameDifficulty.level1,
         stars: 3,
         moves: 1,
         timeSeconds: 40,
       );
       await store.saveResult(
         gameId: 'memory',
-        difficulty: GameDifficulty.easy,
+        difficulty: GameDifficulty.level1,
         stars: 3,
         moves: 7,
         timeSeconds: 40,
@@ -283,7 +417,7 @@ void main() {
       addTearDown(tester.view.reset);
       await store.saveResult(
         gameId: 'memory',
-        difficulty: GameDifficulty.easy,
+        difficulty: GameDifficulty.level1,
         stars: 3,
         moves: 6,
         timeSeconds: 20,
@@ -301,7 +435,7 @@ void main() {
       await tester.tap(find.text('Apagar'));
       await tester.pumpAndSettle();
 
-      expect(store.record('memory', GameDifficulty.easy), isNull);
+      expect(store.record('memory', GameDifficulty.level1), isNull);
       expect(find.text('Ainda não jogou'), findsNWidgets(levels));
     });
   });

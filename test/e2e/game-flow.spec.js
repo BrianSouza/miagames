@@ -3,23 +3,26 @@ const Logic = require('../../assets/games/memory/memory-logic.js');
 
 test.describe('partida', () => {
   test('mostra o tabuleiro com todas as cartas escondidas e acessíveis', async ({ game }) => {
-    await game.open({ difficulty: 'easy' });
+    await game.open({ level: 1 });
 
-    await expect(game.cards()).toHaveCount(12);
-    await expect(game.page.locator('#matches')).toHaveText('0/6');
+    await expect(game.cards()).toHaveCount(8);
+    await expect(game.page.locator('#matches')).toHaveText('0/4');
     for (const card of await game.cards().all()) {
       await expect(card).toHaveAttribute('aria-label', 'Carta escondida');
       await expect(card).toHaveAttribute('role', 'button');
     }
   });
 
-  for (const [difficulty, cards, letters, numbers] of [
-    ['easy', 12, 4, 2],
-    ['medium', 16, 5, 3],
-    ['hard', 20, 6, 4],
+  for (const [level, cards, letters, numbers] of [
+    [1, 8, 2, 2],
+    [2, 12, 4, 2],
+    [3, 16, 5, 3],
+    [4, 20, 6, 4],
+    [5, 24, 7, 5],
+    [6, 28, 8, 6],
   ]) {
-    test(`${difficulty}: ${cards} cartas, ${letters} letras e ${numbers} números`, async ({ game }) => {
-      await game.open({ difficulty });
+    test(`nível ${level}: ${cards} cartas, ${letters} letras e ${numbers} números`, async ({ game }) => {
+      await game.open({ level });
 
       await expect(game.cards()).toHaveCount(cards);
       const symbols = [...new Set(await game.symbols())];
@@ -41,7 +44,7 @@ test.describe('partida', () => {
   });
 
   test('letras e números têm cores diferentes, mas o par não é entregue pela cor', async ({ game }) => {
-    await game.open({ difficulty: 'hard' });
+    await game.open({ level: 6 });
 
     const colors = await game.page.evaluate(() =>
       [...document.querySelectorAll('.card-back')].map((el) => ({
@@ -56,7 +59,7 @@ test.describe('partida', () => {
   });
 
   test('as cartas viradas mostram o símbolo grande o bastante para ler', async ({ game }) => {
-    await game.open({ difficulty: 'hard' });
+    await game.open({ level: 6 });
 
     // Números de dois algarismos têm fonte menor de propósito: mede um símbolo de 1 caractere
     const card = await game.cards().first().boundingBox();
@@ -83,7 +86,7 @@ test.describe('partida', () => {
 
   test('cada letra é falada pelo nome em português, não pelo que o motor de voz leria', async ({ game }) => {
     // Joga todas as cartas de um tabuleiro difícil e confere o que foi falado
-    await game.open({ difficulty: 'hard' });
+    await game.open({ level: 6 });
     const symbols = await game.symbols();
     const [first] = (await game.pairs())[0];
 
@@ -126,7 +129,7 @@ test.describe('partida', () => {
   });
 
   test('uma partida perfeita termina com 3 estrelas e envia o resultado ao Flutter', async ({ game }) => {
-    await game.open({ difficulty: 'easy' });
+    await game.open({ level: 2 });
 
     await game.solve();
 
@@ -136,12 +139,12 @@ test.describe('partida', () => {
 
     const complete = (await game.messages()).filter((m) => m.type === 'GAME_COMPLETE');
     expect(complete).toHaveLength(1);
-    expect(complete[0]).toMatchObject({ difficulty: 'easy', moves: 6, matches: 6, stars: 3 });
-    expect(await game.spoken()).toContain('Parabéns! Você encontrou todos os pares!');
+    expect(complete[0]).toMatchObject({ level: 2, moves: 6, matches: 6, stars: 3 });
+    expect(await game.spoken()).toContain('Parabéns! Que incrível!');
   });
 
   test('muitos erros rendem menos estrelas', async ({ game }) => {
-    await game.open({ difficulty: 'easy' });
+    await game.open({ level: 2 });
     const [a, b] = await game.mismatch();
 
     for (let i = 0; i < 20; i++) await game.flipPair(a, b);

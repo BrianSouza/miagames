@@ -21,12 +21,12 @@
   var movesEl          = document.getElementById('moves');
 
   // ── Ponte com o Flutter ───────────────────────────────────────────────────────
-  // INIT: {"type":"INIT","difficulty":"easy","gameId":"memory","sound":true,
+  // INIT: {"type":"INIT","level":1,"gameId":"memory","sound":true,
   //        "best":{"stars":2,"moves":9}}
   Bridge.onInit(function (data) {
     Sounds.setEnabled(data.sound !== false);
     best = data.best || null;
-    startGame(data.difficulty);
+    startGame(data.level);
   });
 
   var speak = Bridge.speak;
@@ -41,12 +41,12 @@
   }
 
   // ── Ciclo de vida ─────────────────────────────────────────────────────────────
-  function startGame(difficulty) {
+  function startGame(level) {
     clearTimeout(checkTimer);   // uma verificação pendente não pode atingir o jogo novo
     checkTimer = null;
 
     var previousRound = state ? state.round : 0;
-    state = Logic.createGame(difficulty || (state && state.difficulty), {
+    state = Logic.createGame(level || (state && state.level), {
       previousRound: previousRound,
     });
 
@@ -58,7 +58,7 @@
   }
 
   function resetGame() {
-    startGame(state ? state.difficulty : 'easy');
+    startGame(state ? state.level : 1);
   }
 
   // ── Renderização ──────────────────────────────────────────────────────────────
@@ -100,12 +100,11 @@
       - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
     var height = boardContainerEl.clientHeight
       - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
-    var rows = Math.ceil(state.cards.length / state.cols);
-    var size = Logic.cardSize(width, height, state.cols, rows, BOARD_GAP);
+    var grid = Logic.bestGrid(state.cards.length, width, height, BOARD_GAP);
 
-    boardEl.style.gridTemplateColumns = 'repeat(' + state.cols + ', ' + size + 'px)';
+    boardEl.style.gridTemplateColumns = 'repeat(' + grid.cols + ', ' + grid.size + 'px)';
     boardEl.style.gap = BOARD_GAP + 'px';
-    boardEl.style.setProperty('--card-size', size + 'px');
+    boardEl.style.setProperty('--card-size', grid.size + 'px');
   }
 
   // O que a criança vê são as estrelas; os números ficam para os leitores de tela
@@ -172,16 +171,14 @@
 
     GameResult.show(stars, newRecord);
     Sounds.play('win');
-    speak(newRecord
-      ? 'Parabéns! Novo recorde!'
-      : 'Parabéns! Você encontrou todos os pares!');
+    speak(window.GameUtils.resultSpeech(stars, newRecord));
 
     // O Flutter salva o recorde; aqui só atualizamos para o "Jogar novamente"
     if (!best || newRecord) best = { stars: stars, moves: state.moves };
 
     Bridge.complete({
       gameId:      'memory',
-      difficulty:  state.difficulty,
+      level:       state.level,
       moves:       state.moves,
       matches:     state.matches,
       timeSeconds: Math.floor(elapsed / 1000),
