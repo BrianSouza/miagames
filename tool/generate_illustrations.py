@@ -5,7 +5,7 @@ Uso: python3 tool/generate_illustrations.py
 - assets/images/memory_game.svg  → ícone do jogo da memória na Home
 - assets/images/which_letter.svg → ícone do "Qual é a letra?"
 - assets/games/missing-syllable/img/*.svg → desenhos das palavras do "Qual sílaba falta?" (tool/words_art.py)
-- assets/images/mia/*.svg        → a gatinha Mia em 4 poses (Flutter)
+- assets/images/mia/*.svg        → a gatinha Mia em 4 poses e os acessórios outfit_*.svg (Flutter)
 - assets/games/_shared/img/*.svg → as mesmas poses para os jogos (web)
 - tool/brand/*.svg               → fontes do ícone do app e do splash (veja tool/render_brand.js)
 
@@ -16,7 +16,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from mia import POSES, head_svg, mono_svg
+from mia import POSES, OUTFITS, head_svg, mono_svg, outfit_svg
 from words_art import WORDS, VIEWBOX as WORD_VIEWBOX
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
@@ -216,3 +216,11 @@ paint_icon = (
 write('assets/images/paint.svg',
       f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">{paint_icon}</svg>\n')
 print('ícone gerado: assets/images/paint.svg')
+
+
+# ── Acessórios da Mia (camadas transparentes, no quadro da Mia) ───────────────
+for outfit_id in OUTFITS:
+    svg = outfit_svg(outfit_id)
+    write(f'assets/images/mia/outfit_{outfit_id}.svg', svg)
+    write(f'assets/games/_shared/img/outfit_{outfit_id}.svg', svg)
+print(f'{len(OUTFITS)} acessórios da Mia gerados')

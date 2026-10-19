@@ -28,10 +28,13 @@ miagames/
 │   ├── modules/
 │   │   ├── game_module.dart       ← Contrato de um jogo + os 6 níveis
 │   │   ├── game_registry.dart     ← Lista de jogos exibidos na Home
-│   │   └── level_progress.dart    ← Níveis abertos (2 estrelas abrem o próximo) e o que a Mia sugere
+│   │   ├── level_progress.dart    ← Níveis abertos (2 estrelas abrem o próximo) e o que a Mia sugere
+│   │   ├── outfits.dart           ← Os acessórios da Mia, seus limiares de estrelas e a regra de vestir
+│   │   └── outfit_progress.dart   ← Total de estrelas e o que a Mia veste agora
 │   └── screens/
 │       ├── home_screen.dart       ← A Mia acena + cartões grandes dos jogos (grade adaptativa)
 │       ├── level_sheet.dart       ← Trilha dos 6 níveis: estrelas, cadeados e a sugestão da Mia
+│       ├── wardrobe_screen.dart   ← Guarda-roupa da Mia
 │       ├── game_screen.dart       ← WebView + ponte com o jogo
 │       └── parents_screen.dart    ← Área dos pais
 ├── assets/images/                 ← Ícones dos jogos e a gatinha Mia em 4 poses (SVG)
@@ -86,7 +89,7 @@ não deve mudar. Os PNGs de `assets/icon` e `assets/splash` são só entrada das
 
 | Direção | Mensagem | Para quê |
 |---------|----------|----------|
-| Flutter → jogo | `window.handleFlutterMessage({type: 'INIT', level, gameId, sound, best})` | Inicia a partida no nível (1 a 6), a preferência de som e o recorde atual (`{stars, moves}` ou `null`) |
+| Flutter → jogo | `window.handleFlutterMessage({type: 'INIT', level, gameId, sound, best, outfit})` | Inicia a partida no nível (1 a 6), a preferência de som, o recorde atual (`{stars, moves}` ou `null`) e os ids dos acessórios que a Mia veste (`['crown', 'glasses']`) |
 | jogo → Flutter | `SPEAK {text}` | Fala um texto. A voz do navegador não funciona na WebView do Android |
 | jogo → Flutter | `NAVIGATE_BACK` | Volta para a Home |
 | jogo → Flutter | `GAME_COMPLETE {stars, moves, timeSeconds}` | Fim da partida: o Flutter salva o recorde |
@@ -113,6 +116,19 @@ A Home, a trilha de níveis e a tela de jogo funcionam automaticamente. O jogo r
 | **Quantos tem?** | Conta os objetos (tocar em cada um fala o número) e escolhe quantos são | contar até 3, 5, 10, 15, 20 e 20 (com 5 respostas) |
 | **Colorir** | Escolhe a cor e pinta com o dedo **dentro** de uma letra ou palavra (a tinta não sai do contorno) | vogais → letras de traços retos → todas as maiúsculas → minúsculas → palavras de 4 letras (com o desenho) → palavras de 6 letras; o pincel afina e a tolerância encolhe |
 | **Qual sílaba falta?** | Vê o desenho de uma palavra e a palavra com uma sílaba faltando (`BO _`); escolhe a que completa | palavras de 2 sílabas (a lacuna é sempre a última no nível 1) → 2 sílabas com respostas parecidas → palavras de 3 sílabas, com 3, 4 e 5 respostas |
+
+### Vestir a Mia
+
+As estrelas viram acessórios. A soma das estrelas de todos os jogos e níveis abre, em ordem, **9 itens** para a Mia
+(florzinha com 3 estrelas, chapéu de festa 7, óculos 12, tiara 18, cachecol 26, coroa 35, óculos escuros 46,
+medalha 58 e chapéu de pirata 72; o máximo possível é 90). Os itens ficam em 3 espaços (cabeça, rosto e pescoço) e
+cada espaço veste um item só.
+
+- **Guarda-roupa**: o botão de cabide na Home abre a tela, com a Mia vestida em cima e os itens embaixo. Tocar num item aberto o veste (a voz fala o nome) ou o tira; tocar num fechado fala quantas estrelas faltam
+- Quando as estrelas de uma partida abrem um item, a Mia o ganha e a criança escolhe vesti-lo na hora ou deixar para depois
+- A Mia vestida aparece na Home, no seletor de níveis, na comemoração de nível aberto, enquanto o jogo carrega e **dentro dos jogos** (na pergunta e na tela de parabéns): o Flutter manda os ids em `INIT.outfit` e o kit empilha os SVGs sobre a Mia
+- Cada acessório é um SVG transparente no mesmo quadro da Mia (`tool/mia.py`, `outfit_<id>.svg`), então serve em qualquer pose. Para acrescentar um item: desenhe-o em `tool/mia.py`, acrescente-o em `lib/modules/outfits.dart` e rode `python3 tool/generate_illustrations.py`; os testes conferem que todo item tem desenho no app e nos jogos
+- A roupa fica salva no aparelho. Apagar o progresso fecha os itens de novo, e eles saem da Mia
 
 ### Trilha de 6 níveis
 
@@ -261,7 +277,7 @@ Para cobrir um jogo novo, abra-o com `fixtures.js` ou crie uma fixture parecida.
 
 ## ♿ Pensado para crianças de 3 a 6 anos
 
-- **A gatinha Mia** acena na Home (tocar nela fala "Oi! Vamos brincar?"), pensa enquanto o jogo carrega e comemora no fim
+- **A gatinha Mia** acena na Home (tocar nela fala "Oi! Vamos brincar?"), pensa enquanto o jogo carrega e comemora no fim; as estrelas ganhas viram roupas para ela (**Vestir a Mia**)
 - **Quase sem texto**: cada jogo é um cartão grande com figura e alto-falante; o nome é falado ao toque
 - **Sem cronômetro nem contagem de jogadas** na tela da criança: o progresso é uma fileira de estrelas que acendem ao acertar. Jogadas e tempo continuam salvos para a Área dos pais
 - **Retorno sem castigo**: acertar faz o par "pular", errar balança de leve, nunca vermelho forte nem "errou"

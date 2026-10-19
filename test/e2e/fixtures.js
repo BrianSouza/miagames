@@ -51,7 +51,7 @@ class Game {
   }
 
   /** Abre o jogo e envia o INIT, como o Flutter faz quando a página carrega. */
-  async open({ level = 1, sound = true, best = null, seed = null } = {}) {
+  async open({ level = 1, sound = true, best = null, seed = null, outfit = [] } = {}) {
     await this.page.clock.install({ time: new Date('2030-01-01T00:00:00Z') });
     if (seed !== null) {
       // Tabuleiro previsível: o sorteio da página usa o mesmo gerador que o Node
@@ -80,7 +80,7 @@ class Game {
     await this.page.evaluate(
       (init) =>
         window.handleFlutterMessage({ type: 'INIT', ...init }),
-      { gameId: this.id, level, sound, best },
+      { gameId: this.id, level, sound, best, outfit },
     );
     return this;
   }

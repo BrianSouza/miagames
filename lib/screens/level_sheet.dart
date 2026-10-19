@@ -9,6 +9,7 @@ import '../core/widgets/mia_avatar.dart';
 import '../core/widgets/star_rating.dart';
 import '../modules/game_module.dart';
 import '../modules/level_progress.dart';
+import '../modules/outfits.dart';
 
 /// Folha inferior com a trilha de 6 níveis do jogo. Cada nível novo abre com 2
 /// estrelas no anterior; os fechados mostram um cadeado. A Mia sugere o nível mais
@@ -20,10 +21,14 @@ class LevelSheet extends StatelessWidget {
     required this.store,
     required this.onSelect,
     required this.onLocked,
+    this.outfits = const [],
   });
 
   final GameModule game;
   final ProgressStore store;
+
+  /// O que a Mia veste (aparece no topo da folha)
+  final List<Outfit> outfits;
   final void Function(GameDifficulty) onSelect;
 
   /// A criança tocou num nível fechado
@@ -49,7 +54,7 @@ class LevelSheet extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const MiaAvatar(size: 72),
+              MiaAvatar(size: 72, outfits: outfits),
               const SizedBox(width: AppSpacing.sm),
               SvgPicture.asset(game.iconAsset, width: 64, height: 64),
               const SizedBox(width: AppSpacing.md),

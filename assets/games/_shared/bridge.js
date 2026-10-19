@@ -14,10 +14,13 @@
     root.MiaGamesFlutter.postMessage(JSON.stringify(Object.assign({ type: type }, payload)));
   }
 
-  /** Registra quem recebe o INIT (dificuldade, som e recorde atual) */
+  /** Registra quem recebe o INIT (nível, som, recorde atual e a roupa da Mia) */
   function onInit(callback) {
     root.handleFlutterMessage = function (data) {
-      if (data && data.type === 'INIT') callback(data);
+      if (!data || data.type !== 'INIT') return;
+      // a Mia se veste antes de o jogo começar
+      if (root.GameKit) root.GameKit.setOutfit(data.outfit);
+      callback(data);
     };
   }
 

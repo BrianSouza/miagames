@@ -26,12 +26,13 @@ void main() {
     );
   });
 
-  test('INIT leva dificuldade, preferência de som e recorde', () async {
+  test('INIT leva o nível, a preferência de som e o recorde', () async {
     expect(session.initMessage(), {
       'type': 'INIT',
       'gameId': 'memory',
       'level': 2,
       'sound': true,
+      'outfit': <String>[],
       'best': null,
     });
 
@@ -79,5 +80,19 @@ void main() {
     expect(narrator.spoken, isEmpty);
     expect(backs, 0);
     expect(store.record('memory', GameDifficulty.level2), isNull);
+  });
+
+  test('INIT leva o que a Mia está vestindo (só itens abertos)', () async {
+    // 3 estrelas abrem a florzinha; a coroa (35) continua fechada
+    await store.saveResult(
+      gameId: 'memory',
+      difficulty: GameDifficulty.level1,
+      stars: 3,
+      moves: 4,
+      timeSeconds: 10,
+    );
+    await store.setWornOutfitIds(['flower', 'crown']);
+
+    expect(session.initMessage()['outfit'], ['flower']);
   });
 }

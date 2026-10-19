@@ -246,12 +246,15 @@ html, body {
 /* A Mia "fala": tocar nela repete a pergunta */
 .asker {
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  /* grade de uma célula só: a Mia e os acessórios dela se empilham no mesmo lugar */
+  display: grid;
+  place-items: center;
   cursor: pointer;
   -webkit-touch-callout: none;
 }
+.asker > .mia, .mia-stack > .mia { grid-area: 1 / 1; }
+.mia-stack { display: grid; place-items: center; }
+.mia.outfit { pointer-events: none; }
 .asker .mia {
   width: min(26vh, 200px);
   height: min(26vh, 200px);

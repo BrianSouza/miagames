@@ -8,6 +8,8 @@ import 'package:miagames/core/widgets/star_rating.dart';
 import 'package:miagames/modules/game_module.dart';
 import 'package:miagames/modules/game_registry.dart';
 import 'package:miagames/modules/level_progress.dart';
+import 'package:miagames/modules/outfit_progress.dart';
+import 'package:miagames/modules/outfits.dart';
 import 'package:miagames/screens/home_screen.dart';
 
 import 'fake_narrator.dart';
@@ -361,6 +363,269 @@ void main() {
           reason: 'o quinto desce para a fileira de baixo',
         );
       }
+    });
+  });
+
+  group('vestir a Mia', () {
+    Finder outfit(String id) => find.byKey(ValueKey('outfit-$id'));
+
+    Future<void> earn(int stars) => store.saveResult(
+      gameId: 'memory',
+      difficulty: GameDifficulty.level1,
+      stars: stars,
+      moves: 4,
+      timeSeconds: 10,
+    );
+
+    Future<void> openWardrobe(WidgetTester tester) async {
+      await tester.tap(find.byTooltip('Vestir a Mia'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a Home tem o botão do guarda-roupa, grande', (tester) async {
+      await tester.pumpWidget(app());
+
+      final button = find.byTooltip('Vestir a Mia');
+      expect(button, findsOneWidget);
+      final size = tester.getSize(button);
+      expect(size.width, greaterThanOrEqualTo(56));
+      expect(size.height, greaterThanOrEqualTo(56));
+    });
+
+    testWidgets(
+      'sem estrelas, todos os itens estão fechados, com as estrelas que pedem',
+      (tester) async {
+        await tester.pumpWidget(app());
+        await openWardrobe(tester);
+
+        for (final o in outfits) {
+          expect(outfit(o.id), findsOneWidget, reason: o.name);
+        }
+        expect(find.byIcon(Icons.lock_rounded), findsNWidgets(outfits.length));
+        expect(find.text('${outfits.first.stars}'), findsOneWidget);
+      },
+    );
+
+    testWidgets('as estrelas ganhas abrem itens, e o total aparece', (
+      tester,
+    ) async {
+      await earn(3);
+      await tester.pumpWidget(app());
+      await openWardrobe(tester);
+
+      expect(
+        find.byIcon(Icons.lock_rounded),
+        findsNWidgets(outfits.length - 1),
+      );
+      expect(find.text('3'), findsWidgets, reason: 'o total de estrelas');
+    });
+
+    testWidgets(
+      'tocar num item aberto o veste, fala o nome, e tocar de novo o tira',
+      (tester) async {
+        await earn(3);
+        await tester.pumpWidget(app());
+        await openWardrobe(tester);
+
+        await tester.tap(outfit('flower'));
+        await tester.pumpAndSettle();
+        expect(store.wornOutfitIds, ['flower']);
+        expect(narrator.spoken.last, 'Florzinha');
+        expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
+
+        await tester.tap(outfit('flower'));
+        await tester.pumpAndSettle();
+        expect(store.wornOutfitIds, isEmpty);
+        expect(find.byIcon(Icons.check_circle_rounded), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'um item do mesmo espaço troca o anterior; de outro espaço, soma',
+      (tester) async {
+        await earn(3);
+        await store.saveResult(
+          gameId: 'memory',
+          difficulty: GameDifficulty.level2,
+          stars: 3,
+          moves: 8,
+          timeSeconds: 10,
+        );
+        await store.saveResult(
+          gameId: 'memory',
+          difficulty: GameDifficulty.level3,
+          stars: 3,
+          moves: 10,
+          timeSeconds: 10,
+        ); // 9 estrelas: flower (3) e party (7) abertos
+        await tester.pumpWidget(app());
+        await openWardrobe(tester);
+
+        await tester.tap(outfit('flower'));
+        await tester.pumpAndSettle();
+        await tester.tap(outfit('party'));
+        await tester.pumpAndSettle();
+
+        expect(store.wornOutfitIds, ['party'], reason: 'os dois são de cabeça');
+      },
+    );
+
+    testWidgets(
+      'tocar num item fechado fala quantas estrelas faltam e não veste',
+      (tester) async {
+        await earn(3);
+        await tester.pumpWidget(app());
+        await openWardrobe(tester);
+
+        await tester.tap(outfit('glasses')); // pede 12
+        await tester.pumpAndSettle();
+
+        expect(narrator.spoken.last, 'Faltam 9 estrelas para ganhar óculos.');
+        expect(store.wornOutfitIds, isEmpty);
+      },
+    );
+
+    testWidgets('o guarda-roupa cabe em qualquer tela, sem estourar', (
+      tester,
+    ) async {
+      await earn(3);
+      for (final size in const [
+        Size(320, 568),
+        Size(360, 740),
+        Size(844, 390),
+        Size(800, 1280),
+        Size(1280, 800),
+      ]) {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        await tester.pumpWidget(app());
+        await openWardrobe(tester);
+        expect(tester.takeException(), isNull, reason: '$size');
+        expect(outfit('flower'), findsOneWidget, reason: '$size');
+        await tester.pumpWidget(const SizedBox());
+      }
+      addTearDown(tester.view.reset);
+    });
+
+    testWidgets('voltar do guarda-roupa leva à Home com a Mia vestida', (
+      tester,
+    ) async {
+      await earn(3);
+      await store.setWornOutfitIds(['flower']);
+      await tester.pumpWidget(app());
+
+      await openWardrobe(tester);
+      await tester.tap(find.byTooltip('Voltar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(miaGreeting), findsOneWidget);
+      final header = tester
+          .widgetList<MiaAvatar>(find.byType(MiaAvatar))
+          .firstWhere((m) => m.pose == MiaPose.wave);
+      expect(header.outfits.map((o) => o.id), ['flower']);
+    });
+
+    testWidgets(
+      'trocar a roupa no guarda-roupa muda a Mia da Home atrás dele',
+      (tester) async {
+        await earn(3);
+        await tester.pumpWidget(app());
+        await openWardrobe(tester);
+        await tester.tap(outfit('flower'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Voltar'));
+        await tester.pumpAndSettle();
+
+        final header = tester
+            .widgetList<MiaAvatar>(find.byType(MiaAvatar))
+            .firstWhere((m) => m.pose == MiaPose.wave);
+        expect(header.outfits.map((o) => o.id), ['flower']);
+      },
+    );
+
+    group('ganhar um item jogando', () {
+      Widget fakeGame(
+        BuildContext context,
+        GameModule game,
+        GameDifficulty difficulty,
+        int stars,
+      ) {
+        return Scaffold(
+          body: TextButton(
+            onPressed: () async {
+              await store.saveResult(
+                gameId: game.id,
+                difficulty: difficulty,
+                stars: stars,
+                moves: 3,
+                timeSeconds: 20,
+              );
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('terminar'),
+          ),
+        );
+      }
+
+      Future<void> play(WidgetTester tester, int stars) async {
+        await tester.pumpWidget(
+          app(gameBuilder: (c, g, d) => fakeGame(c, g, d, stars)),
+        );
+        await tester.tap(find.text('Jogo da Memória'));
+        await tester.pumpAndSettle();
+        await tester.tap(level(1));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('terminar'));
+        await tester.pumpAndSettle();
+      }
+
+      testWidgets('2 estrelas abrem o nível 2, mas ainda não dão item', (
+        tester,
+      ) async {
+        await play(tester, 2);
+
+        expect(find.text('Nível 2 aberto!'), findsOneWidget);
+        await tester.tap(find.byIcon(Icons.home_rounded));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('A Mia ganhou'), findsNothing);
+      });
+
+      testWidgets(
+        '3 estrelas abrem o nível 2 e depois a florzinha, que ela pode vestir',
+        (tester) async {
+          await play(tester, 3);
+
+          expect(find.text('Nível 2 aberto!'), findsOneWidget);
+          await tester.tap(find.byIcon(Icons.home_rounded));
+          await tester.pumpAndSettle();
+
+          expect(find.text('A Mia ganhou: Florzinha!'), findsOneWidget);
+          expect(narrator.spoken.last, 'Parabéns! A Mia ganhou florzinha!');
+
+          await tester.tap(
+            find.descendant(
+              of: find.byType(Dialog),
+              matching: find.byIcon(Icons.checkroom_rounded),
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(store.wornOutfitIds, ['flower']);
+          expect(wornOutfits(store).map((o) => o.id), ['flower']);
+        },
+      );
+
+      testWidgets('o botão de início guarda o item sem vestir', (tester) async {
+        await play(tester, 3);
+        await tester.tap(find.byIcon(Icons.home_rounded)); // nível
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byIcon(Icons.home_rounded)); // item
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('A Mia ganhou'), findsNothing);
+        expect(store.wornOutfitIds, isEmpty);
+        expect(unlockedOutfits(totalStars(store)).map((o) => o.id), ['flower']);
+      });
     });
   });
 
