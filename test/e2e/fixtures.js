@@ -16,6 +16,9 @@ const LOGICS = {
   'missing-syllable': require('../../assets/games/missing-syllable/missing-syllable-logic.js'),
 };
 const PaintLogic = require('../../assets/games/paint/paint-logic.js');
+const BuildWordLogic = require('../../assets/games/build-word/build-word-logic.js');
+const SortBoxLogic = require('../../assets/games/sort-box/sort-box-logic.js');
+const PuzzleLogic = require('../../assets/games/puzzle/puzzle-logic.js');
 
 const gameUrl = (id) =>
   pathToFileURL(path.join(__dirname, `../../assets/games/${id}/index.html`)).href;
@@ -379,7 +382,319 @@ class PaintGame extends Game {
   }
 }
 
+/**
+ * Jogos de arrastar: o dedo é o mouse de verdade (mouse.down / move / up) ou, em `touchDrag`,
+ * eventos de ponteiro do tipo "toque" disparados na página. O item levantado fica `GameDrag.LIFT`
+ * px acima do dedo: para o CENTRO dele parar no alvo, o dedo vai `LIFT` abaixo do centro do alvo.
+ */
+class DragGame extends Game {
+  lift() {
+    return this.page.evaluate(() => window.GameDrag.LIFT);
+  }
+
+  /** Arrasta `from` até `to` (locators) com o mouse. `drop: false` deixa o botão apertado */
+  async dragTo(from, to, { steps = 8, drop = true, dx = 0, dy = 0 } = {}) {
+    const a = await from.boundingBox();
+    const b = await to.boundingBox();
+    const lift = await this.lift();
+    await this.page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+    await this.page.mouse.down();
+    await this.page.mouse.move(b.x + b.width / 2 + dx, b.y + b.height / 2 + lift + dy, { steps });
+    if (drop) await this.page.mouse.up();
+  }
+
+  /** Arrasta até um ponto da tela (o centro do item para nele) */
+  async dragToPoint(from, x, y, { steps = 8, drop = true } = {}) {
+    const a = await from.boundingBox();
+    const lift = await this.lift();
+    await this.page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+    await this.page.mouse.down();
+    await this.page.mouse.move(x, y + lift, { steps });
+    if (drop) await this.page.mouse.up();
+  }
+
+  /** O mesmo arrasto, mas com eventos de ponteiro de TOQUE (como a WebView do Android envia) */
+  async touchDrag(from, to, { steps = 6 } = {}) {
+    const a = await from.boundingBox();
+    const b = await to.boundingBox();
+    const lift = await this.lift();
+    await this.page.evaluate(
+      ({ a, b, lift, steps }) => {
+        const start = { x: a.x + a.width / 2, y: a.y + a.height / 2 };
+        const end = { x: b.x + b.width / 2, y: b.y + b.height / 2 + lift };
+        const el = document.elementFromPoint(start.x, start.y);
+        const fire = (type, p) =>
+          el.dispatchEvent(
+            new PointerEvent(type, {
+              clientX: p.x, clientY: p.y, pointerId: 7, pointerType: 'touch',
+              isPrimary: true, bubbles: true, cancelable: true,
+            }),
+          );
+        fire('pointerdown', start);
+        for (let i = 1; i <= steps; i++) {
+          fire('pointermove', { x: start.x + ((end.x - start.x) * i) / steps, y: start.y + ((end.y - start.y) * i) / steps });
+        }
+        fire('pointerup', end);
+      },
+      { a, b, lift, steps },
+    );
+  }
+
+  /** Espera as animações de CSS (encaixe, volta) terminarem; as que não acabam (a dica pulsa) ficam de fora */
+  settled() {
+    return this.page.evaluate(() =>
+      Promise.all(
+        document
+          .getAnimations()
+          .filter((x) => x.effect.getTiming().iterations !== Infinity)
+          .map((x) => x.finished.catch(() => {})),
+      ),
+    );
+  }
+}
+
+/** "Montar a palavra": arrasta as sílabas para as lacunas; sabe a palavra de cada rodada pela semente */
+class BuildWordGame extends DragGame {
+  constructor(page, problems) {
+    super(page, problems, 'build-word');
+  }
+
+  async open({ level = 1, seed = 1, ...rest } = {}) {
+    await super.open({ level, seed, ...rest });
+    this.plan = BuildWordLogic.createGame(level, { random: prng(seed) });
+    return this;
+  }
+
+  /** Peças que ainda estão na bandeja */
+  looseTiles() {
+    return this.page.locator('#tray .tile.draggable');
+  }
+
+  /** Uma peça solta com essa sílaba ('bo') */
+  loose(syllable) {
+    return this.page.locator(`#tray .tile.draggable[data-syllable="${syllable}"]`).first();
+  }
+
+  slot(index) {
+    return this.page.locator(`.slot[data-index="${index}"]`);
+  }
+
+  doneCount() {
+    return this.page.locator('#progress .dot.done').count();
+  }
+
+  /** A palavra em que a criança está, segundo o sorteio com semente */
+  async currentRound() {
+    return this.plan.rounds[await this.doneCount()];
+  }
+
+  /** Uma sílaba que NÃO serve na lacuna dada, entre as peças soltas */
+  async wrongSyllable(slot) {
+    const round = await this.currentRound();
+    const loose = await this.looseTiles().evaluateAll((els) => els.map((e) => e.dataset.syllable));
+    return loose.find((s) => s !== round.syllables[slot]);
+  }
+
+  /** Arrasta a peça certa para a lacuna `slot` da palavra atual */
+  async placeRight(slot) {
+    const round = await this.currentRound();
+    await this.dragTo(this.loose(round.syllables[slot]), this.slot(slot));
+    await this.settled();
+  }
+
+  /** Arrasta uma peça errada para a lacuna `slot` */
+  async placeWrong(slot) {
+    await this.dragTo(this.loose(await this.wrongSyllable(slot)), this.slot(slot));
+    await this.settled();
+  }
+
+  /** Monta a palavra atual sem erro e espera a pausa de comemoração */
+  async solveRound() {
+    const round = await this.currentRound();
+    for (let slot = 0; slot < round.syllables.length; slot++) await this.placeRight(slot);
+    await this.tick(BuildWordLogic.ADVANCE_DELAY_MS);
+  }
+
+  /** Joga uma partida perfeita, sem erros */
+  async solve() {
+    for (let i = 0; i < this.plan.total; i++) await this.solveRound();
+  }
+
+  /** Monta as palavras até chegar à de índice `index` (0 = a primeira) */
+  async goToRound(index) {
+    while ((await this.doneCount()) < index) await this.solveRound();
+  }
+}
+
+/**
+ * "Na caixa certa": arrasta as peças para as caixas (ou, nos níveis de dar, para o prato).
+ * Sabe cada rodada pela semente; `roundIndex` é a rodada em que a criança está.
+ */
+class SortBoxGame extends DragGame {
+  constructor(page, problems) {
+    super(page, problems, 'sort-box');
+  }
+
+  async open({ level = 1, seed = 1, ...rest } = {}) {
+    await super.open({ level, seed, ...rest });
+    this.plan = SortBoxLogic.createGame(level, { random: prng(seed) });
+    this.roundIndex = 0;
+    return this;
+  }
+
+  round() {
+    return this.plan.rounds[this.roundIndex];
+  }
+
+  /** Peças que ainda estão na pilha e podem ser arrastadas */
+  looseItems() {
+    return this.page.locator('#tray .item.draggable');
+  }
+
+  /** A peça (da pilha) com esse id */
+  item(id) {
+    return this.page.locator(`#tray .item[data-item="${id}"]`);
+  }
+
+  box(id) {
+    return this.page.locator(`.box[data-box="${id}"]`);
+  }
+
+  doneCount() {
+    return this.page.locator('#progress .dot.done').count();
+  }
+
+  /** Arrasta a peça `id` até a caixa `boxId` e espera as animações */
+  async drop(id, boxId) {
+    await this.dragTo(this.item(id), this.box(boxId));
+    await this.settled();
+  }
+
+  /** As peças da rodada atual que vão para alguma caixa, na ordem da pilha */
+  wanted() {
+    return this.round().items.filter((i) => i.target);
+  }
+
+  /** Coloca a peça no lugar certo */
+  placeRight(item) {
+    return this.drop(item.id, item.target);
+  }
+
+  /** Uma peça da rodada atual que NÃO vai na caixa dada (e ainda está solta) e o id de uma caixa errada para ela */
+  async wrongDrop() {
+    const loose = await this.looseItems().evaluateAll((els) => els.map((e) => e.dataset.item));
+    const round = this.round();
+    for (const id of loose) {
+      const item = round.items.find((i) => i.id === id);
+      const box = round.targets.find((t) => t.id !== item.target);
+      if (box) return { item, boxId: box.id };
+    }
+    return null;
+  }
+
+  /** Solta uma peça numa caixa que não é a dela */
+  async dropWrong() {
+    const { item, boxId } = await this.wrongDrop();
+    await this.drop(item.id, boxId);
+    return item;
+  }
+
+  /** Termina a rodada atual sem erro e espera a pausa de comemoração */
+  async solveRound() {
+    const round = this.round();
+    const wanted = this.wanted().slice(0, round.goal);
+    for (const item of wanted) await this.placeRight(item);
+    await this.tick(SortBoxLogic.ADVANCE_DELAY_MS);
+    this.roundIndex++;
+  }
+
+  /** Joga uma partida perfeita, sem erros */
+  async solve() {
+    for (let i = 0; i < this.plan.rounds.length; i++) await this.solveRound();
+  }
+}
+
+/**
+ * "Quebra-cabeça": arrasta as peças do desenho para a grade. Sabe o desenho e a ordem das peças de cada
+ * rodada pela semente; `roundIndex` é o desenho em que a criança está.
+ */
+class PuzzleGame extends DragGame {
+  constructor(page, problems) {
+    super(page, problems, 'puzzle');
+  }
+
+  async open({ level = 1, seed = 1, ...rest } = {}) {
+    await super.open({ level, seed, ...rest });
+    this.plan = PuzzleLogic.createGame(level, { random: prng(seed) });
+    this.roundIndex = 0;
+    return this;
+  }
+
+  round() {
+    return this.plan.rounds[this.roundIndex];
+  }
+
+  /** Peças que ainda estão na bandeja */
+  loosePieces() {
+    return this.page.locator('#tray .piece.draggable');
+  }
+
+  piece(id) {
+    return this.page.locator(`#tray .piece[data-piece="${id}"]`);
+  }
+
+  slot(cell) {
+    return this.page.locator(`.slot[data-cell="${cell}"]`);
+  }
+
+  /** A peça de número `id` (da rodada atual), pelo objeto do plano */
+  pieceOf(id) {
+    return this.round().pieces.find((p) => p.id === id);
+  }
+
+  /** Arrasta a peça `id` até o lugar `cell` e espera as animações */
+  async drop(id, cell) {
+    await this.dragTo(this.piece(id), this.slot(cell));
+    await this.settled();
+  }
+
+  /** Coloca a peça no lugar certo */
+  placeRight(piece) {
+    return this.drop(piece.id, piece.cell);
+  }
+
+  /** A bandeja da rodada atual na ordem em que as peças aparecem */
+  tray() {
+    return this.round().order.map((id) => this.pieceOf(id));
+  }
+
+  /** Solta uma peça solta num lugar vazio que NÃO é o dela; devolve a peça */
+  async dropWrong() {
+    const loose = await this.loosePieces().evaluateAll((els) => els.map((e) => e.dataset.piece));
+    const piece = this.pieceOf(loose[0]);
+    const filled = await this.page.locator('.slot.filled').evaluateAll((els) => els.map((e) => Number(e.dataset.cell)));
+    const cell = this.round().pieces.find((p) => p.cell !== piece.cell && !filled.includes(p.cell)).cell;
+    await this.drop(piece.id, cell);
+    return piece;
+  }
+
+  /** Monta o desenho atual sem erro e espera a pausa de comemoração */
+  async solveRound() {
+    for (const piece of this.tray()) await this.placeRight(piece);
+    await this.tick(PuzzleLogic.ADVANCE_DELAY_MS);
+    this.roundIndex++;
+  }
+
+  /** Joga uma partida perfeita, sem erros */
+  async solve() {
+    for (let i = 0; i < this.plan.rounds.length; i++) await this.solveRound();
+  }
+}
+
 const CLASSES = {
+  puzzle: (page, problems) => new PuzzleGame(page, problems),
+  'sort-box': (page, problems) => new SortBoxGame(page, problems),
+  'build-word': (page, problems) => new BuildWordGame(page, problems),
   memory: (page, problems) => new MemoryGame(page, problems),
   'which-letter': (page, problems) => new QuizGame(page, problems, 'which-letter'),
   'how-many': (page, problems) => new QuizGame(page, problems, 'how-many'),
@@ -405,4 +720,14 @@ const test = base.extend({
   },
 });
 
-module.exports = { test, expect, CHECK_DELAY_MS, ADVANCE_DELAY_MS, prng };
+/** Jogos com muitas peças mostram no máximo 8 estrelas de progresso (cada uma vale mais de uma peça) */
+const MAX_DOTS = 8;
+
+/** Quantas estrelas de progresso se veem numa partida de `total` peças */
+const shownDots = (total) => Math.min(total, MAX_DOTS);
+
+/** Quantas estão acesas depois de `done` peças no lugar (todas, só quando todas as peças estão) */
+const litDots = (done, total) =>
+  done >= total ? shownDots(total) : Math.floor((done * shownDots(total)) / total);
+
+module.exports = { test, expect, CHECK_DELAY_MS, ADVANCE_DELAY_MS, prng, MAX_DOTS, shownDots, litDots };

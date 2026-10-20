@@ -23,7 +23,7 @@ class Outfit {
   String get asset => 'assets/images/mia/outfit_$id.svg';
 }
 
-/// Os acessórios, na ordem em que abrem. As estrelas somadas chegam a 90 (5 jogos × 6 níveis ×
+/// Os acessórios, na ordem em que abrem. As estrelas somadas chegam a 144 (8 jogos × 6 níveis ×
 /// 3 estrelas): o último item pede 72, o que só vem depois de muito jogo.
 const outfits = <Outfit>[
   Outfit(id: 'flower', slot: OutfitSlot.hat, name: 'Florzinha', stars: 3),

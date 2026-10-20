@@ -32,6 +32,9 @@ flutter:
     - assets/games/how-many/
     - assets/games/how-many/img/
     - assets/games/paint/
+    - assets/games/build-word/
+    - assets/games/sort-box/
+    - assets/games/puzzle/
     - assets/games/missing-syllable/
     - assets/games/missing-syllable/img/
     - assets/games/_shared/

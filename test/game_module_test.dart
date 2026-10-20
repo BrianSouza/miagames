@@ -153,6 +153,106 @@ void main() {
     });
   });
 
+  test(
+    'Montar a palavra: sílabas, peças a mais e parecidas batem com a tabela do jogo',
+    () {
+      final game = findGameById('build-word')!;
+      final levels = levelsOf('assets/games/build-word/build-word-logic.js');
+      expect(levels.length, 6);
+      for (final difficulty in GameDifficulty.values) {
+        final level = levels[difficulty.index];
+        final hint = game.hintFor(difficulty);
+        expect(
+          hint,
+          contains('${level['syllables']} sílabas'),
+          reason: difficulty.label,
+        );
+        if (level['similar'] == 'true') {
+          expect(hint, contains('parecidas'), reason: difficulty.label);
+        } else if (level['extra'] == '0') {
+          expect(hint, isNot(contains('peça')), reason: difficulty.label);
+        } else {
+          final extra = level['extra'];
+          expect(
+            hint,
+            contains(extra == '1' ? '1 peça a mais' : '$extra peças a mais'),
+            reason: difficulty.label,
+          );
+        }
+      }
+      expect(game.scoreText(1), '1 erro');
+    },
+  );
+
+  test(
+    'Na caixa certa: peças, pedido máximo e números batem com a tabela do jogo',
+    () {
+      final game = findGameById('sort-box')!;
+      final levels = levelsOf('assets/games/sort-box/sort-box-logic.js');
+      expect(levels.length, 6);
+      for (final difficulty in GameDifficulty.values) {
+        final level = levels[difficulty.index];
+        final hint = game.hintFor(difficulty);
+        if (level['kind'] == "'give'") {
+          expect(
+            hint,
+            contains('Dê até ${level['most']} objetos'),
+            reason: difficulty.label,
+          );
+        } else {
+          expect(
+            hint,
+            contains('${level['items']} peças'),
+            reason: difficulty.label,
+          );
+          // o nome do que se separa (o valor do `pool` na tabela é lido só até o primeiro hífen)
+          final pool = level['pool']!;
+          if (pool == "'letters") {
+            expect(
+              hint,
+              contains('Letras e números'),
+              reason: difficulty.label,
+            );
+          } else if (level['boxes'] == '2') {
+            expect(
+              hint,
+              contains('Vogais e consoantes'),
+              reason: difficulty.label,
+            );
+          } else {
+            expect(hint, contains('números'), reason: difficulty.label);
+          }
+          if (level['maxNumber'] != '9') {
+            expect(
+              hint,
+              contains('até ${level['maxNumber']}'),
+              reason: difficulty.label,
+            );
+          }
+        }
+      }
+      expect(game.scoreText(2), '2 erros');
+    },
+  );
+
+  test('Quebra-cabeça: peças e guia batem com a tabela do jogo', () {
+    final game = findGameById('puzzle')!;
+    final levels = levelsOf('assets/games/puzzle/puzzle-logic.js');
+    expect(levels.length, 6);
+    for (final difficulty in GameDifficulty.values) {
+      final level = levels[difficulty.index];
+      final pieces = int.parse(level['cols']!) * int.parse(level['rows']!);
+      final hint = game.hintFor(difficulty);
+      expect(hint, startsWith('$pieces peças'), reason: difficulty.label);
+      if (level['guide'] == 'false') {
+        expect(hint, contains('sem guia'), reason: difficulty.label);
+      } else {
+        expect(hint, isNot(contains('sem guia')), reason: difficulty.label);
+      }
+    }
+    expect(game.scoreText(1), '1 erro');
+  });
+
   test('Colorir: o tipo de forma de cada nível bate com a tabela do jogo', () {
     final game = findGameById('paint')!;
     final levels = levelsOf('assets/games/paint/paint-logic.js');
