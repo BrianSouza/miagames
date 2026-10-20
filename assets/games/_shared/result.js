@@ -21,7 +21,7 @@
     modal.innerHTML =
       '<canvas id="confetti" aria-hidden="true"></canvas>' +
       '<div class="modal-content">' +
-        '<img class="mia" src="' + MIA + '" alt="" />' +
+        '<div class="mia-stack" data-mia-stack><img class="mia" src="' + MIA + '" alt="" /></div>' +
         '<h2>Parabéns!</h2>' +
         '<div id="stars" class="stars" role="img"></div>' +
         '<p id="new-record" class="new-record hidden">Novo recorde!</p>' +
@@ -31,6 +31,7 @@
         '</div>' +
       '</div>';
     document.body.appendChild(modal);
+    root.GameKit.dress(modal.querySelector('.mia-stack'));
     document.getElementById('btn-play-again').addEventListener('click', handlers.onAgain);
     document.getElementById('btn-home').addEventListener('click', handlers.onHome);
   }

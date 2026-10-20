@@ -8,6 +8,8 @@ import '../core/theme/app_colors.dart';
 import '../core/widgets/mia_avatar.dart';
 import '../core/widgets/exit_guard.dart';
 import '../modules/game_module.dart';
+import '../modules/outfit_progress.dart';
+import '../modules/outfits.dart';
 
 /// Carrega um mini-jogo (HTML/JS em assets/) numa WebView e faz a ponte
 /// entre ele e o Flutter: configuração inicial, voz, navegação e progresso.
@@ -94,7 +96,7 @@ class _GameScreenState extends State<GameScreen> {
           child: Stack(
             children: [
               WebViewWidget(controller: _controller),
-              if (_isLoading) const _MiaLoading(),
+              if (_isLoading) _MiaLoading(outfits: wornOutfits(widget.store)),
             ],
           ),
         ),
@@ -106,7 +108,9 @@ class _GameScreenState extends State<GameScreen> {
 /// Enquanto o jogo carrega, a Mia "pensa" dando pulinhos (no lugar do círculo
 /// girando, que não diz nada para quem tem 5 anos).
 class _MiaLoading extends StatefulWidget {
-  const _MiaLoading();
+  const _MiaLoading({required this.outfits});
+
+  final List<Outfit> outfits;
 
   @override
   State<_MiaLoading> createState() => _MiaLoadingState();
@@ -136,7 +140,11 @@ class _MiaLoadingState extends State<_MiaLoading>
           offset: Offset(0, -16 * Curves.easeInOut.transform(_bounce.value)),
           child: child,
         ),
-        child: const MiaAvatar(pose: MiaPose.think, size: 160),
+        child: MiaAvatar(
+          pose: MiaPose.think,
+          size: 160,
+          outfits: widget.outfits,
+        ),
       ),
     );
   }

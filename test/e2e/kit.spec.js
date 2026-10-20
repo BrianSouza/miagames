@@ -16,7 +16,7 @@ test.describe('cabeçalho', () => {
   });
 
   test('tem uma estrela de progresso por par, e elas acendem ao acertar', async ({ game }) => {
-    await game.open({ difficulty: 'easy' });
+    await game.open({ level: 2 });
     const dots = game.page.locator('#progress .dot');
     await expect(dots).toHaveCount(6);
     await expect(game.page.locator('#progress .dot.done')).toHaveCount(0);
@@ -29,9 +29,9 @@ test.describe('cabeçalho', () => {
     await expect(game.page.locator('#progress .dot.done')).toHaveCount(6);
   });
 
-  test('o número de estrelas acompanha a dificuldade e zera ao reiniciar', async ({ game }) => {
-    await game.open({ difficulty: 'hard' });
-    await expect(game.page.locator('#progress .dot')).toHaveCount(10);
+  test('o número de estrelas acompanha o nível e zera ao reiniciar', async ({ game }) => {
+    await game.open({ level: 6 });
+    await expect(game.page.locator('#progress .dot')).toHaveCount(14);
 
     const [[a, b]] = await game.pairs();
     await game.flipPair(a, b);

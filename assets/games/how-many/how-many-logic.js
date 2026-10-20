@@ -8,19 +8,22 @@
 (function (root, factory) {
   'use strict';
   if (typeof module === 'object' && module.exports) {
-    module.exports = factory(require('../_shared/symbols.js'), require('../_shared/quiz.js'));
+    module.exports = factory(require('../_shared/symbols.js'), require('../_shared/quiz.js'), require('../_shared/game-utils.js'));
   } else {
-    root.HowManyLogic = factory(root.GameSymbols, root.GameQuiz);
+    root.HowManyLogic = factory(root.GameSymbols, root.GameQuiz, root.GameUtils);
   }
-})(this, function (Symbols, Quiz) {
+})(this, function (Symbols, Quiz, Utils) {
   'use strict';
 
-  // max: quantos objetos no máximo; options: quantas figuras de resposta
-  var DIFFICULTY = {
-    easy:   { rounds: 8, max: 5,  options: 3 },
-    medium: { rounds: 8, max: 10, options: 4 },
-    hard:   { rounds: 8, max: 20, options: 4 },
-  };
+  // Os 6 níveis (do 1 ao 6). max: quantos objetos no máximo; options: quantas figuras de resposta
+  var LEVELS = [
+    { rounds: 8, max: 3,  options: 3 },
+    { rounds: 8, max: 5,  options: 3 },
+    { rounds: 8, max: 10, options: 4 },
+    { rounds: 8, max: 15, options: 4 },
+    { rounds: 8, max: 20, options: 4 },
+    { rounds: 8, max: 20, options: 5 },
+  ];
 
   /** Quantos objetos cabem numa fileira: fácil de contar de 5 em 5 */
   var PER_ROW = 5;
@@ -35,8 +38,8 @@
     { id: 'flower', name: 'Flor',    plural: 'flores',   feminine: true },
   ];
 
-  function configFor(difficulty) {
-    return DIFFICULTY[difficulty] || DIFFICULTY.easy;
+  function configFor(level) {
+    return LEVELS[Utils.clampLevel(level) - 1];
   }
 
   /** O que a voz pergunta: "Quantas estrelas tem aqui?", "Quantos peixes tem aqui?" */
@@ -82,14 +85,16 @@
   }
 
   /**
-   * As quantidades das rodadas. Fácil: todos os valores de 1 a 5 aparecem; médio e
-   * difícil: valores diferentes (no difícil, metade acima de 10).
+   * As quantidades das rodadas. Com poucos valores (1 a 3, 1 a 5) todos aparecem, na mesma
+   * medida, sem repetir em seguida. Com mais valores, são todos diferentes; quando o máximo
+   * passa de 10, metade das rodadas fica acima de 10 (é aí que contar fica difícil).
    */
   function pickCounts(cfg, random) {
     var all = range(1, cfg.max);
     if (cfg.max <= cfg.rounds) {
-      var extras = Symbols.shuffle(all, random).slice(0, cfg.rounds - cfg.max);
-      return noAdjacentRepeats(all.concat(extras), random);
+      var pool = [];
+      while (pool.length < cfg.rounds) pool = pool.concat(Symbols.shuffle(all, random));
+      return noAdjacentRepeats(pool.slice(0, cfg.rounds), random);
     }
     if (cfg.max > 10) {
       var low = Symbols.shuffle(range(1, 10), random).slice(0, cfg.rounds / 2);
@@ -136,10 +141,10 @@
   }
 
   /** Cria uma partida. `previousRound` identifica a partida (ver Quiz.next) */
-  function createGame(difficulty, options) {
+  function createGame(level, options) {
     var opts = options || {};
-    var key = DIFFICULTY[difficulty] ? difficulty : 'easy';
-    var cfg = DIFFICULTY[key];
+    var key = Utils.clampLevel(level);
+    var cfg = LEVELS[key - 1];
 
     var counts = pickCounts(cfg, opts.random);
     var objects = pickObjects(cfg.rounds, opts.random);
@@ -168,7 +173,7 @@
   }
 
   return {
-    DIFFICULTY: DIFFICULTY,
+    LEVELS: LEVELS,
     PER_ROW: PER_ROW,
     OBJECTS: OBJECTS,
     ADVANCE_DELAY_MS: Quiz.ADVANCE_DELAY_MS,

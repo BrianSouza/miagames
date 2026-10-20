@@ -1,23 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../modules/outfits.dart';
 
 /// As poses da gatinha Mia (desenhadas em tool/mia.py).
 enum MiaPose { happy, wave, cheer, think }
 
 /// A Mia, mascote do app. É decorativa: leitores de tela a ignoram.
 class MiaAvatar extends StatelessWidget {
-  const MiaAvatar({super.key, this.pose = MiaPose.happy, this.size = 96});
+  const MiaAvatar({
+    super.key,
+    this.pose = MiaPose.happy,
+    this.size = 96,
+    this.outfits = const [],
+  });
 
   final MiaPose pose;
   final double size;
 
+  /// O que ela veste: camadas transparentes por cima da pose (a cabeça fica no mesmo lugar
+  /// em todas as poses)
+  final List<Outfit> outfits;
+
   @override
   Widget build(BuildContext context) {
     return ExcludeSemantics(
-      child: SvgPicture.asset(
-        'assets/images/mia/mia_${pose.name}.svg',
+      child: SizedBox(
         width: size,
         height: size,
+        child: Stack(
+          children: [
+            SvgPicture.asset(
+              'assets/images/mia/mia_${pose.name}.svg',
+              width: size,
+              height: size,
+            ),
+            for (final outfit in outfits)
+              SvgPicture.asset(outfit.asset, width: size, height: size),
+          ],
+        ),
       ),
     );
   }

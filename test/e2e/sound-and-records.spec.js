@@ -5,7 +5,7 @@ const NOTES = { flip: 1, match: 2, mismatch: 2, win: 4 };
 
 test.describe('efeitos sonoros', () => {
   test('uma partida perfeita toca virar, acertar e vencer', async ({ game }) => {
-    await game.open({ difficulty: 'easy', sound: true });
+    await game.open({ level: 2, sound: true });
 
     await game.solve();
 
@@ -23,7 +23,7 @@ test.describe('efeitos sonoros', () => {
   });
 
   test('com o som desligado pelos pais, nenhuma nota toca', async ({ game }) => {
-    await game.open({ difficulty: 'easy', sound: false });
+    await game.open({ level: 2, sound: false });
 
     await game.solve();
     await expect(game.page.locator('#result-modal')).toBeVisible();
@@ -49,7 +49,7 @@ test.describe('recorde', () => {
     await game.solve();
 
     await expect(novoRecorde(game)).toBeHidden();
-    expect(await game.spoken()).toContain('Parabéns! Você encontrou todos os pares!');
+    expect(await game.spoken()).toContain('Parabéns! Que incrível!');
   });
 
   test('bater o recorde mostra o selo e fala', async ({ game }) => {

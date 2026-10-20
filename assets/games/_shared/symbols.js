@@ -78,6 +78,21 @@
     return n >= 0 && String(n) === symbol ? numbersUpTo(n).pop() : null;
   }
 
+  /**
+   * Letras maiúsculas que a criança confunde por serem parecidas (E e F, M e N...).
+   * Nos níveis altos, uma das figuras erradas é uma delas: é aí que ela precisa olhar bem.
+   */
+  var CONFUSABLE_LETTERS = {
+    E: ['F'], F: ['E'], M: ['N', 'W'], N: ['M', 'H'], W: ['M', 'V'], V: ['W', 'U'], U: ['V'],
+    O: ['Q', 'C'], Q: ['O'], C: ['G', 'O'], G: ['C'], P: ['R', 'B'], R: ['P', 'B'], B: ['P', 'R', 'D'],
+    D: ['B'], I: ['L', 'J'], L: ['I'], J: ['I'], H: ['N'], T: ['I'],
+  };
+
+  /** Dois números de dois algarismos que dividem um deles (13 e 23, 12 e 13): se confundem à primeira vista */
+  function sharesDigit(a, b) {
+    return a !== b && a.length === b.length && (a.charAt(0) === b.charAt(0) || a.charAt(a.length - 1) === b.charAt(b.length - 1));
+  }
+
   /** Rótulo para leitores de tela: "Letra B", "Número 3" */
   function labelFor(item) {
     return (item.kind === 'letter' ? 'Letra ' : 'Número ') + item.symbol;
@@ -99,7 +114,9 @@
     numbersUpTo: numbersUpTo,
     numberName: numberName,
     LOOKALIKES: LOOKALIKES,
+    CONFUSABLE_LETTERS: CONFUSABLE_LETTERS,
     looksAlike: looksAlike,
+    sharesDigit: sharesDigit,
     findSymbol: findSymbol,
     labelFor: labelFor,
     shuffle: shuffle,

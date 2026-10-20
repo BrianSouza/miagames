@@ -1,24 +1,54 @@
-import 'dart:ui' show Color;
 import 'dart:io';
+import 'dart:ui' show Color;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:miagames/modules/game_module.dart';
 import 'package:miagames/modules/game_registry.dart';
 
+/// Lê a tabela `var LEVELS = [ {...}, ... ];` de um arquivo de regras (JS) e devolve
+/// uma lista de mapas chave → valor, um por nível.
+List<Map<String, String>> levelsOf(String file) {
+  final source = File(file).readAsStringSync();
+  final table = RegExp(
+    r'var LEVELS = \[(.*?)\];',
+    dotAll: true,
+  ).firstMatch(source)!.group(1)!;
+  return [
+    for (final object in RegExp(r'\{([^}]*)\}').allMatches(table))
+      {
+        for (final pair in RegExp(
+          r"(\w+):\s*([\w.']+)",
+        ).allMatches(object.group(1)!))
+          pair.group(1)!: pair.group(2)!,
+      },
+  ];
+}
+
 void main() {
   final memory = findGameById('memory')!;
 
-  test('cada dificuldade do Jogo da Memória tem um texto próprio', () {
-    for (final difficulty in memory.difficulties) {
-      expect(
-        memory.hintFor(difficulty),
-        isNot(difficulty.description),
-        reason: 'o nível ${difficulty.label} deveria dizer o que traz',
-      );
+  test('os níveis vão do 1 ao 6, com nome e voz', () {
+    expect(GameDifficulty.values.map((d) => d.level), [1, 2, 3, 4, 5, 6]);
+    expect(GameDifficulty.level3.label, 'Nível 3');
+    expect(GameDifficulty.level3.spoken, 'Nível três');
+    expect(GameDifficulty.level1.previous, isNull);
+    expect(GameDifficulty.level4.previous, GameDifficulty.level3);
+  });
+
+  test('todo jogo tem os 6 níveis e um texto para cada um', () {
+    for (final game in gameRegistry) {
+      expect(game.difficulties, GameDifficulty.values, reason: game.id);
+      for (final difficulty in game.difficulties) {
+        expect(
+          game.hintFor(difficulty),
+          isNotEmpty,
+          reason: '${game.id} ${difficulty.label}',
+        );
+      }
     }
   });
 
-  test('sem texto próprio, usa a descrição genérica da dificuldade', () {
+  test('sem texto próprio, a dica fica vazia', () {
     const game = GameModule(
       id: 'x',
       displayName: 'X',
@@ -26,95 +56,125 @@ void main() {
       accentColor: Color(0xFF000000),
       ageRange: [3, 6],
       skills: [],
-      difficulties: [GameDifficulty.easy],
       assetPath: 'x.html',
     );
-    expect(game.hintFor(GameDifficulty.easy), GameDifficulty.easy.description);
+    expect(game.hintFor(GameDifficulty.level1), '');
   });
 
-  // Os textos do app e o alcance real dos números (memory-logic.js) não podem
-  // se desencontrar: o app diria "até 50" e o jogo sortearia outra coisa.
-  test('os textos de dificuldade batem com maxNumber do jogo', () {
-    final logic = File(
-      'assets/games/memory/memory-logic.js',
-    ).readAsStringSync();
-    final max = {
-      for (final m in RegExp(
-        r'(easy|medium|hard):\s*\{[^}]*maxNumber:\s*(\d+)',
-      ).allMatches(logic))
-        m[1]!: int.parse(m[2]!),
-    };
-    expect(max, {'easy': 9, 'medium': 20, 'hard': 50});
-
-    for (final difficulty in GameDifficulty.values) {
-      expect(
-        memory.hintFor(difficulty),
-        contains('até ${max[difficulty.name]}'),
-        reason: difficulty.name,
-      );
-    }
-  });
-
-  test('os textos de dificuldade do "Qual é a letra?" batem com o jogo', () {
-    final game = findGameById('which-letter')!;
-    final logic = File(
-      'assets/games/which-letter/which-letter-logic.js',
-    ).readAsStringSync();
-    final max = {
-      for (final m in RegExp(
-        r'(easy|medium|hard):\s*\{[^}]*maxNumber:\s*(\d+|null)',
-      ).allMatches(logic))
-        m[1]!: m[2]!,
-    };
-    expect(max, {'easy': 'null', 'medium': '20', 'hard': '50'});
-
-    expect(game.hintFor(GameDifficulty.easy), 'Só letras');
-    expect(game.hintFor(GameDifficulty.medium), contains('até 20'));
-    expect(game.hintFor(GameDifficulty.hard), contains('até 50'));
-  });
-
-  test('os textos de dificuldade do "Quantos tem?" batem com o jogo', () {
-    final game = findGameById('how-many')!;
-    final logic = File(
-      'assets/games/how-many/how-many-logic.js',
-    ).readAsStringSync();
-    final max = {
-      for (final m in RegExp(
-        r'(easy|medium|hard):\s*\{[^}]*max:\s*(\d+)',
-      ).allMatches(logic))
-        m[1]!: int.parse(m[2]!),
-    };
-    expect(max, {'easy': 5, 'medium': 10, 'hard': 20});
-
-    for (final difficulty in GameDifficulty.values) {
-      expect(
-        game.hintFor(difficulty),
-        'Contar de 1 a ${max[difficulty.name]}',
-        reason: difficulty.name,
-      );
-    }
-  });
-
-  test('os textos de dificuldade do "Qual sílaba falta?" batem com o jogo', () {
-    final game = findGameById('missing-syllable')!;
-    final logic = File(
-      'assets/games/missing-syllable/missing-syllable-logic.js',
-    ).readAsStringSync();
-    final config = {
-      for (final m in RegExp(
-        r'(easy|medium|hard):\s*\{[^}]*syllables:\s*(\d+)[^}]*similar:\s*(true|false)',
-      ).allMatches(logic))
-        m[1]!: (int.parse(m[2]!), m[3] == 'true'),
-    };
-    expect(config, {
-      'easy': (2, false),
-      'medium': (2, true),
-      'hard': (3, true),
+  // Os textos do app e o que o jogo faz de verdade não podem se desencontrar: o app
+  // diria "até 50" e o jogo sortearia outra coisa.
+  group('os textos de nível batem com a tabela LEVELS do jogo', () {
+    test('Jogo da Memória: pares e alcance dos números', () {
+      final levels = levelsOf('assets/games/memory/memory-logic.js');
+      expect(levels.length, 6);
+      for (final difficulty in GameDifficulty.values) {
+        final level = levels[difficulty.index];
+        expect(
+          memory.hintFor(difficulty),
+          'Letras e números até ${level['maxNumber']} · ${level['pairs']} pares',
+          reason: difficulty.label,
+        );
+      }
     });
 
-    expect(game.hintFor(GameDifficulty.easy), 'Palavras de 2 sílabas');
-    expect(game.hintFor(GameDifficulty.medium), 'Sílabas parecidas');
-    expect(game.hintFor(GameDifficulty.hard), 'Palavras de 3 sílabas');
+    test('Qual é a letra?: alcance dos números e quantidade de figuras', () {
+      final game = findGameById('which-letter')!;
+      final levels = levelsOf(
+        'assets/games/which-letter/which-letter-logic.js',
+      );
+      expect(levels.length, 6);
+      for (final difficulty in GameDifficulty.values) {
+        final level = levels[difficulty.index];
+        final hint = game.hintFor(difficulty);
+        if (level['maxNumber'] != 'null') {
+          expect(
+            hint,
+            contains('${level['maxNumber']}'),
+            reason: difficulty.label,
+          );
+        } else {
+          expect(hint, isNot(contains('números')), reason: difficulty.label);
+        }
+        if (difficulty.level >= 5) {
+          expect(
+            hint,
+            contains('${level['options']} figuras'),
+            reason: difficulty.label,
+          );
+        }
+      }
+      expect(levels.map((l) => l['firstLetters']).toList(), [
+        'true',
+        'false',
+        'false',
+        'false',
+        'false',
+        'false',
+      ]);
+      expect(game.hintFor(GameDifficulty.level1), contains('A a M'));
+    });
+
+    test('Quantos tem?: até quantos objetos', () {
+      final game = findGameById('how-many')!;
+      final levels = levelsOf('assets/games/how-many/how-many-logic.js');
+      expect(levels.length, 6);
+      for (final difficulty in GameDifficulty.values) {
+        expect(
+          game.hintFor(difficulty),
+          startsWith('Contar de 1 a ${levels[difficulty.index]['max']}'),
+          reason: difficulty.label,
+        );
+      }
+    });
+
+    test('Qual sílaba falta?: sílabas da palavra, parecidas e respostas', () {
+      final game = findGameById('missing-syllable')!;
+      final levels = levelsOf(
+        'assets/games/missing-syllable/missing-syllable-logic.js',
+      );
+      expect(levels.length, 6);
+      for (final difficulty in GameDifficulty.values) {
+        final level = levels[difficulty.index];
+        final hint = game.hintFor(difficulty);
+        if (level['similar'] == 'false') {
+          expect(
+            hint,
+            contains('${level['syllables']} sílabas'),
+            reason: difficulty.label,
+          );
+        }
+        if (level['options'] == '5') {
+          expect(hint, contains('5 respostas'), reason: difficulty.label);
+        }
+        if (level['blank'] == 'last') {
+          expect(hint, contains('última'), reason: difficulty.label);
+        }
+      }
+    });
+  });
+
+  test('Colorir: o tipo de forma de cada nível bate com a tabela do jogo', () {
+    final game = findGameById('paint')!;
+    final levels = levelsOf('assets/games/paint/paint-logic.js');
+    expect(levels.length, 6);
+    const expected = {
+      'vowels': 'Vogais',
+      'straight': 'traços retos',
+      'letters': 'Todas as letras',
+      'lower': 'minúsculas',
+      'words4': 'Palavras',
+      'words6': 'Palavras',
+    };
+    for (final difficulty in GameDifficulty.values) {
+      final pool = levels[difficulty.index]['pool']!.replaceAll("'", '');
+      expect(
+        game.hintFor(difficulty),
+        contains(expected[pool]!),
+        reason: '${difficulty.label} ($pool)',
+      );
+    }
+    expect(game.scoreText(1), '1 saída');
+    expect(game.scoreText(4), '4 saídas');
   });
 
   test('cada jogo tem id único, ilustração e conta erros ou jogadas', () {
@@ -123,7 +183,11 @@ void main() {
     for (final game in gameRegistry) {
       expect(File(game.iconAsset).existsSync(), isTrue, reason: game.id);
       expect(File(game.assetPath).existsSync(), isTrue, reason: game.id);
-      expect(['jogadas', 'erros'], contains(game.scoreLabel), reason: game.id);
+      expect(
+        ['jogadas', 'erros', 'saídas'],
+        contains(game.scoreLabel),
+        reason: game.id,
+      );
     }
   });
 }

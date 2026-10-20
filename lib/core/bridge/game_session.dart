@@ -1,4 +1,5 @@
 import '../../modules/game_module.dart';
+import '../../modules/outfit_progress.dart';
 import '../audio/narrator.dart';
 import '../storage/progress_store.dart';
 import 'game_message.dart';
@@ -26,8 +27,10 @@ class GameSession {
     return {
       'type': 'INIT',
       'gameId': game.id,
-      'difficulty': difficulty.name,
+      'level': difficulty.level,
       'sound': store.soundEnabled,
+      // o que a Mia veste: os jogos desenham as camadas por cima dela
+      'outfit': wornOutfits(store).map((o) => o.id).toList(),
       'best': best == null ? null : {'stars': best.stars, 'moves': best.moves},
     };
   }

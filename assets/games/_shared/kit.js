@@ -77,5 +77,42 @@
     };
   }
 
-  root.GameKit = { createHeader: createHeader, icon: icon, STAR: STAR };
+  // ── A roupa da Mia ────────────────────────────────────────────────────────────
+  // O Flutter manda os ids dos acessórios que ela veste (`INIT.outfit`). Cada acessório é um SVG
+  // transparente no mesmo quadro da Mia: empilhado sobre ela (grade de uma célula só), serve em
+  // qualquer pose. Os lugares onde a Mia aparece levam `data-mia-stack` e se vestem sozinhos.
+  var OUTFIT_URL = new URL('img/', document.currentScript.src).href;
+  var outfit = [];
+
+  /** Veste os acessórios em `container` (que tem a Mia como `img.mia` e empilha seus filhos) */
+  function dress(container) {
+    Array.prototype.slice.call(container.querySelectorAll('img.outfit')).forEach(function (el) {
+      el.remove();
+    });
+    outfit.forEach(function (id) {
+      var img = document.createElement('img');
+      img.className = 'mia outfit';
+      img.alt = '';
+      img.setAttribute('aria-hidden', 'true');
+      img.src = OUTFIT_URL + 'outfit_' + id + '.svg';
+      container.appendChild(img);
+    });
+  }
+
+  /** Define o que a Mia veste e atualiza todos os lugares onde ela aparece */
+  function setOutfit(ids) {
+    // só nomes simples (a-z): o id vira parte do caminho do arquivo
+    outfit = (Array.isArray(ids) ? ids : []).filter(function (id) {
+      return typeof id === 'string' && /^[a-z]+$/.test(id);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-mia-stack]'), dress);
+  }
+
+  root.GameKit = {
+    createHeader: createHeader,
+    icon: icon,
+    STAR: STAR,
+    dress: dress,
+    setOutfit: setOutfit,
+  };
 })(window);

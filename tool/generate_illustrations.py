@@ -5,7 +5,7 @@ Uso: python3 tool/generate_illustrations.py
 - assets/images/memory_game.svg  → ícone do jogo da memória na Home
 - assets/images/which_letter.svg → ícone do "Qual é a letra?"
 - assets/games/missing-syllable/img/*.svg → desenhos das palavras do "Qual sílaba falta?" (tool/words_art.py)
-- assets/images/mia/*.svg        → a gatinha Mia em 4 poses (Flutter)
+- assets/images/mia/*.svg        → a gatinha Mia em 4 poses e os acessórios outfit_*.svg (Flutter)
 - assets/games/_shared/img/*.svg → as mesmas poses para os jogos (web)
 - tool/brand/*.svg               → fontes do ícone do app e do splash (veja tool/render_brand.js)
 
@@ -16,7 +16,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from mia import POSES, head_svg, mono_svg
+from mia import POSES, OUTFITS, head_svg, mono_svg, outfit_svg
 from words_art import WORDS, VIEWBOX as WORD_VIEWBOX
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
@@ -197,3 +197,30 @@ missing_icon = (
 write('assets/images/missing_syllable.svg',
       f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">{missing_icon}</svg>\n')
 print('ícone gerado: assets/images/missing_syllable.svg')
+
+
+# ── Ícone do "Colorir": uma letra pintada e um pincel ────────────────────────
+paint_icon = (
+    '<rect x="10" y="14" width="76" height="92" rx="14" fill="#fff" stroke="#D9E2E5" stroke-width="2"/>'
+    # o "A" contornado de azul, com o miolo pintado até a metade
+    + stroke('M26 96 L48 34 L70 96 M34 76 H62', '#DDE6F2', 15)
+    + '<path d="M26 96 L40 56 M34 76 H44" fill="none" stroke="#FF6B9A" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>'
+    + stroke('M26 96 L48 34 L70 96 M34 76 H62', BLUE, 3.5)
+    # o pincel
+    + '<g transform="rotate(35 92 40)">'
+    '<rect x="86" y="4" width="12" height="40" rx="6" fill="#FFC93C" stroke="#D99A00" stroke-width="2.5"/>'
+    '<rect x="85" y="40" width="14" height="14" rx="2" fill="#B0BEC5" stroke="#78909C" stroke-width="2.5"/>'
+    '<path d="M86 54 H98 L96 70 Q92 78 88 70 Z" fill="#FF6B9A" stroke="#C2185B" stroke-width="2.5" stroke-linejoin="round"/>'
+    '</g>'
+)
+write('assets/images/paint.svg',
+      f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">{paint_icon}</svg>\n')
+print('ícone gerado: assets/images/paint.svg')
+
+
+# ── Acessórios da Mia (camadas transparentes, no quadro da Mia) ───────────────
+for outfit_id in OUTFITS:
+    svg = outfit_svg(outfit_id)
+    write(f'assets/images/mia/outfit_{outfit_id}.svg', svg)
+    write(f'assets/games/_shared/img/outfit_{outfit_id}.svg', svg)
+print(f'{len(OUTFITS)} acessórios da Mia gerados')

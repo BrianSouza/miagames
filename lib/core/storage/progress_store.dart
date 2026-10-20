@@ -66,6 +66,7 @@ class ProgressStore extends ChangeNotifier {
   static const _soundKey = 'settings.sound';
   static const _voiceKey = 'settings.voice';
   static const _progressPrefix = 'progress.';
+  static const _outfitKey = 'outfit.worn';
 
   static String _recordKey(String gameId, GameDifficulty difficulty) =>
       '$_progressPrefix$gameId.${difficulty.name}';
@@ -85,6 +86,17 @@ class ProgressStore extends ChangeNotifier {
 
   Future<void> setVoiceEnabled(bool value) async {
     await _prefs.setBool(_voiceKey, value);
+    notifyListeners();
+  }
+
+  // ── Guarda-roupa ────────────────────────────────────────────────────────────
+
+  /// Os ids dos acessórios que a Mia veste (veja `outfit_progress.dart`, que só mostra os abertos).
+  List<String> get wornOutfitIds =>
+      _prefs.getStringList(_outfitKey) ?? const [];
+
+  Future<void> setWornOutfitIds(List<String> ids) async {
+    await _prefs.setStringList(_outfitKey, ids);
     notifyListeners();
   }
 

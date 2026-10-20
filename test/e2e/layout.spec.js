@@ -15,9 +15,9 @@ for (const [name, viewport] of Object.entries(VIEWPORTS)) {
   test.describe(name, () => {
     test.use({ viewport });
 
-    for (const difficulty of ['easy', 'medium', 'hard']) {
-      test(`${difficulty}: o tabuleiro cabe, sem rolar e sem cortar cartas`, async ({ game }) => {
-        await game.open({ difficulty });
+    for (const level of [1, 2, 3, 4, 5, 6]) {
+      test(`nível ${level}: o tabuleiro cabe, sem rolar e sem cortar cartas`, async ({ game }) => {
+        await game.open({ level });
 
         const container = await game.page.locator('#board-container').boundingBox();
         const board = await game.page.locator('#board').boundingBox();
@@ -39,7 +39,7 @@ for (const [name, viewport] of Object.entries(VIEWPORTS)) {
     }
 
     test('as cartas têm o mesmo tamanho e são quadradas', async ({ game }) => {
-      await game.open({ difficulty: 'hard' });
+      await game.open({ level: 6 });
 
       const sizes = new Set();
       for (const card of await game.cards().all()) {
@@ -55,7 +55,7 @@ for (const [name, viewport] of Object.entries(VIEWPORTS)) {
 test.describe('tela redimensionada', () => {
   test('o tabuleiro se ajusta ao girar o aparelho', async ({ game, page }) => {
     await page.setViewportSize({ width: 360, height: 640 });
-    await game.open({ difficulty: 'hard' });
+    await game.open({ level: 6 });
     const portrait = (await game.cards().first().boundingBox()).width;
 
     await page.setViewportSize({ width: 844, height: 390 });

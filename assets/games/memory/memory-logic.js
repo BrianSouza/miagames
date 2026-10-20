@@ -17,13 +17,19 @@
 })(this, function (Symbols, Utils) {
   'use strict';
 
-  // maxNumber: os números sorteados vão de 0 até este valor. No fácil, só
-  // algarismos soltos; nos níveis seguintes entram os números de dois algarismos.
-  var DIFFICULTY = {
-    easy:   { pairs: 6,  cols: 3, maxNumber: 9 },
-    medium: { pairs: 8,  cols: 4, maxNumber: 20 },
-    hard:   { pairs: 10, cols: 4, maxNumber: 50 },
-  };
+  // Os 6 níveis (do 1 ao 6). maxNumber: os números sorteados vão de 0 até este valor (nos primeiros
+  // níveis, só algarismos soltos; depois entram os de dois algarismos). three/two: a razão
+  // pares/jogadas que vale 3 e 2 estrelas. Quanto maior o tabuleiro, mais a sorte pesa, então a razão
+  // exigida desce um pouco, e o que cresce de verdade é o número de pares e o alcance dos números.
+  // O número de colunas não está aqui: o tabuleiro escolhe o arranjo que dá cartas maiores na tela.
+  var LEVELS = [
+    { pairs: 4,  maxNumber: 5,  three: 0.70, two: 0.50 },
+    { pairs: 6,  maxNumber: 9,  three: 0.70, two: 0.50 },
+    { pairs: 8,  maxNumber: 15, three: 0.65, two: 0.45 },
+    { pairs: 10, maxNumber: 20, three: 0.60, two: 0.45 },
+    { pairs: 12, maxNumber: 30, three: 0.60, two: 0.40 },
+    { pairs: 14, maxNumber: 50, three: 0.55, two: 0.40 },
+  ];
 
   var LETTERS = Symbols.LETTERS;
   var numbersUpTo = Symbols.numbersUpTo;
@@ -40,8 +46,8 @@
   /** Tempo (ms) que as duas cartas ficam visíveis antes da verificação */
   var CHECK_DELAY_MS = 800;
 
-  function configFor(difficulty) {
-    return DIFFICULTY[difficulty] || DIFFICULTY.easy;
+  function configFor(level) {
+    return LEVELS[Utils.clampLevel(level) - 1];
   }
 
   /**
@@ -70,10 +76,10 @@
    * Cria uma partida nova. `round` identifica a partida: uma verificação
    * agendada numa rodada anterior é ignorada (ver resolve).
    */
-  function createGame(difficulty, options) {
+  function createGame(level, options) {
     var opts = options || {};
-    var key = DIFFICULTY[difficulty] ? difficulty : 'easy';
-    var cfg = DIFFICULTY[key];
+    var key = Utils.clampLevel(level);
+    var cfg = LEVELS[key - 1];
 
     var cards = [];
     pickSymbols(cfg.pairs, opts.random, cfg.maxNumber).forEach(function (item, pairId) {
@@ -91,8 +97,7 @@
     });
 
     return {
-      difficulty: key,
-      cols: cfg.cols,
+      level: key,
       cards: shuffle(cards, opts.random),
       phase: 'playing',     // playing | checking | completed
       flipped: [],          // no máximo 2 ids
@@ -174,20 +179,22 @@
     };
   }
 
-  /** 1 a 3 estrelas — o ideal é 1 jogada por par */
+  /** 1 a 3 estrelas pela razão pares/jogadas (o ideal é 1 jogada por par), com a exigência do nível */
   function calcStars(state) {
+    var cfg = configFor(state.level);
     var ratio = state.totalPairs / Math.max(state.moves, 1);
-    if (ratio >= 0.75) return 3;
-    if (ratio >= 0.5) return 2;
+    if (ratio >= cfg.three) return 3;
+    if (ratio >= cfg.two) return 2;
     return 1;
   }
 
   var isNewRecord = Utils.isNewRecord;
   var elapsedMs = Utils.elapsedMs;
   var cardSize = Utils.fitSquare;
+  var bestGrid = Utils.bestGrid;
 
   return {
-    DIFFICULTY: DIFFICULTY,
+    LEVELS: LEVELS,
     LETTERS: LETTERS,
     numbersUpTo: numbersUpTo,
     numberName: numberName,
@@ -205,5 +212,6 @@
     isNewRecord: isNewRecord,
     elapsedMs: elapsedMs,
     cardSize: cardSize,
+    bestGrid: bestGrid,
   };
 });

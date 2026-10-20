@@ -9,17 +9,15 @@ final List<GameModule> gameRegistry = [
     accentColor: Color(0xFF4ECDC4),
     ageRange: [3, 6],
     skills: ['Letras', 'Números', 'Memória'],
-    difficulties: [
-      GameDifficulty.easy,
-      GameDifficulty.medium,
-      GameDifficulty.hard,
-    ],
     assetPath: 'assets/games/memory/index.html',
-    // Mantenha em sincronia com `maxNumber` em memory-logic.js
+    // Mantenha em sincronia com LEVELS em memory-logic.js (pares e maxNumber)
     difficultyHints: {
-      GameDifficulty.easy: 'Letras e números até 9',
-      GameDifficulty.medium: 'Letras e números até 20',
-      GameDifficulty.hard: 'Letras e números até 50',
+      GameDifficulty.level1: 'Letras e números até 5 · 4 pares',
+      GameDifficulty.level2: 'Letras e números até 9 · 6 pares',
+      GameDifficulty.level3: 'Letras e números até 15 · 8 pares',
+      GameDifficulty.level4: 'Letras e números até 20 · 10 pares',
+      GameDifficulty.level5: 'Letras e números até 30 · 12 pares',
+      GameDifficulty.level6: 'Letras e números até 50 · 14 pares',
     },
   ),
   const GameModule(
@@ -29,19 +27,17 @@ final List<GameModule> gameRegistry = [
     accentColor: Color(0xFFFF6B6B),
     ageRange: [4, 6],
     skills: ['Letras', 'Números', 'Escuta'],
-    difficulties: [
-      GameDifficulty.easy,
-      GameDifficulty.medium,
-      GameDifficulty.hard,
-    ],
     assetPath: 'assets/games/which-letter/index.html',
     scoreLabel: 'erros',
     scoreLabelSingular: 'erro',
-    // Mantenha em sincronia com `maxNumber` em which-letter-logic.js
+    // Mantenha em sincronia com LEVELS em which-letter-logic.js
     difficultyHints: {
-      GameDifficulty.easy: 'Só letras',
-      GameDifficulty.medium: 'Letras e números até 20',
-      GameDifficulty.hard: 'Letras e números até 50',
+      GameDifficulty.level1: 'Primeiras letras (A a M)',
+      GameDifficulty.level2: 'Todas as letras',
+      GameDifficulty.level3: 'Letras e números até 10',
+      GameDifficulty.level4: 'Letras e números até 20, figuras parecidas',
+      GameDifficulty.level5: 'Até 30, 5 figuras',
+      GameDifficulty.level6: 'Até 50, 6 figuras',
     },
   ),
   const GameModule(
@@ -51,19 +47,17 @@ final List<GameModule> gameRegistry = [
     accentColor: Color(0xFFFF9F43),
     ageRange: [3, 6],
     skills: ['Contar', 'Números'],
-    difficulties: [
-      GameDifficulty.easy,
-      GameDifficulty.medium,
-      GameDifficulty.hard,
-    ],
     assetPath: 'assets/games/how-many/index.html',
     scoreLabel: 'erros',
     scoreLabelSingular: 'erro',
-    // Mantenha em sincronia com `max` em how-many-logic.js
+    // Mantenha em sincronia com LEVELS em how-many-logic.js
     difficultyHints: {
-      GameDifficulty.easy: 'Contar de 1 a 5',
-      GameDifficulty.medium: 'Contar de 1 a 10',
-      GameDifficulty.hard: 'Contar de 1 a 20',
+      GameDifficulty.level1: 'Contar de 1 a 3',
+      GameDifficulty.level2: 'Contar de 1 a 5',
+      GameDifficulty.level3: 'Contar de 1 a 10',
+      GameDifficulty.level4: 'Contar de 1 a 15',
+      GameDifficulty.level5: 'Contar de 1 a 20',
+      GameDifficulty.level6: 'Contar de 1 a 20, 5 respostas',
     },
   ),
   const GameModule(
@@ -73,19 +67,38 @@ final List<GameModule> gameRegistry = [
     accentColor: Color(0xFFA78BFA),
     ageRange: [5, 6],
     skills: ['Sílabas', 'Leitura'],
-    difficulties: [
-      GameDifficulty.easy,
-      GameDifficulty.medium,
-      GameDifficulty.hard,
-    ],
     assetPath: 'assets/games/missing-syllable/index.html',
     scoreLabel: 'erros',
     scoreLabelSingular: 'erro',
-    // Mantenha em sincronia com `syllables` e `similar` em missing-syllable-logic.js
+    // Mantenha em sincronia com LEVELS em missing-syllable-logic.js
     difficultyHints: {
-      GameDifficulty.easy: 'Palavras de 2 sílabas',
-      GameDifficulty.medium: 'Sílabas parecidas',
-      GameDifficulty.hard: 'Palavras de 3 sílabas',
+      GameDifficulty.level1: 'Palavras de 2 sílabas, falta a última',
+      GameDifficulty.level2: 'Palavras de 2 sílabas',
+      GameDifficulty.level3: 'Sílabas parecidas',
+      GameDifficulty.level4: 'Palavras de 3 sílabas',
+      GameDifficulty.level5: '3 sílabas, sílabas parecidas',
+      GameDifficulty.level6: '3 sílabas, 5 respostas',
+    },
+  ),
+  const GameModule(
+    id: 'paint',
+    displayName: 'Colorir',
+    iconAsset: 'assets/images/paint.svg',
+    accentColor: Color(0xFFFF6B9A),
+    ageRange: [3, 6],
+    skills: ['Letras', 'Contorno', 'Escrita'],
+    assetPath: 'assets/games/paint/index.html',
+    // Aqui a pontuação são as vezes que o dedo saiu do contorno (quanto menos, melhor)
+    scoreLabel: 'saídas',
+    scoreLabelSingular: 'saída',
+    // Mantenha em sincronia com LEVELS em paint-logic.js
+    difficultyHints: {
+      GameDifficulty.level1: 'Vogais',
+      GameDifficulty.level2: 'Letras de traços retos',
+      GameDifficulty.level3: 'Todas as letras',
+      GameDifficulty.level4: 'Letras minúsculas',
+      GameDifficulty.level5: 'Palavras com desenho',
+      GameDifficulty.level6: 'Palavras maiores, pincel fino',
     },
   ),
   // Próximos jogos:

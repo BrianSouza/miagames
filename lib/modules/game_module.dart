@@ -1,26 +1,28 @@
 import 'package:flutter/material.dart';
 
-enum GameDifficulty { easy, medium, hard }
+/// Os 6 níveis de um jogo, do 1 ao 6. Cada nível novo só abre quando o anterior
+/// rende 2 estrelas (veja `level_progress.dart`).
+enum GameDifficulty { level1, level2, level3, level4, level5, level6 }
 
 extension GameDifficultyLabel on GameDifficulty {
-  String get label => switch (this) {
-    GameDifficulty.easy => 'Fácil',
-    GameDifficulty.medium => 'Médio',
-    GameDifficulty.hard => 'Difícil',
-  };
+  /// Número do nível (1 a 6). O jogo recebe este número em `INIT.level`.
+  int get level => index + 1;
 
-  /// Nível em barras (1 a 3). Estrelas ficam reservadas para o desempenho.
-  int get level => switch (this) {
-    GameDifficulty.easy => 1,
-    GameDifficulty.medium => 2,
-    GameDifficulty.hard => 3,
-  };
+  String get label => 'Nível $level';
 
-  String get description => switch (this) {
-    GameDifficulty.easy => 'Perfeito para começar',
-    GameDifficulty.medium => 'Um desafio justo',
-    GameDifficulty.hard => 'Para os especialistas',
-  };
+  /// O que a voz fala ao tocar no nível
+  String get spoken => const [
+    'Nível um',
+    'Nível dois',
+    'Nível três',
+    'Nível quatro',
+    'Nível cinco',
+    'Nível seis',
+  ][index];
+
+  /// O nível anterior (null no primeiro)
+  GameDifficulty? get previous =>
+      index == 0 ? null : GameDifficulty.values[index - 1];
 }
 
 class GameModule {
@@ -34,8 +36,7 @@ class GameModule {
   final List<String> skills;
   final List<GameDifficulty> difficulties;
 
-  /// O que cada nível traz neste jogo (ex.: "Números até 50"). Se um nível não
-  /// tiver texto aqui, o seletor mostra a descrição genérica da dificuldade.
+  /// O que cada nível traz neste jogo (ex.: "Números até 50"), para os pais.
   final Map<GameDifficulty, String> difficultyHints;
 
   // Path to the game's index.html inside Flutter assets.
@@ -58,7 +59,7 @@ class GameModule {
     required this.accentColor,
     required this.ageRange,
     required this.skills,
-    required this.difficulties,
+    this.difficulties = GameDifficulty.values,
     required this.assetPath,
     this.difficultyHints = const {},
     this.scoreLabel = 'jogadas',
@@ -74,5 +75,5 @@ class GameModule {
       '$value ${value == 1 ? scoreLabelSingular : scoreLabel}';
 
   String hintFor(GameDifficulty difficulty) =>
-      difficultyHints[difficulty] ?? difficulty.description;
+      difficultyHints[difficulty] ?? '';
 }

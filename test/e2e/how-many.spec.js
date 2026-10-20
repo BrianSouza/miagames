@@ -10,19 +10,19 @@ const complete = async (game) =>
 
 test.describe('rodada', () => {
   test('mostra a quantidade certa de objetos, as figuras do nível e a pergunta falada', async ({ game }) => {
-    for (const [difficulty, options] of [['easy', 3], ['medium', 4], ['hard', 4]]) {
-      await game.open({ difficulty });
+    for (const [level, options] of [[1, 3], [2, 3], [3, 4], [4, 4], [5, 4], [6, 5]]) {
+      await game.open({ level });
       const round = game.plan.rounds[0];
-      await expect(game.page.locator('.obj'), difficulty).toHaveCount(round.count);
-      await expect(game.options(), difficulty).toHaveCount(options);
+      await expect(game.page.locator('.obj'), `nível ${level}`).toHaveCount(round.count);
+      await expect(game.options(), `nível ${level}`).toHaveCount(options);
       await expect(game.page.locator('#progress .dot')).toHaveCount(8);
-      expect(await game.spoken(), difficulty).toEqual([Logic.promptFor(round.object)]);
+      expect(await game.spoken(), `nível ${level}`).toEqual([Logic.promptFor(round.object)]);
       await game.page.reload();
     }
   });
 
   test('os objetos ficam em fileiras de 5', async ({ game }) => {
-    await game.open({ difficulty: 'hard' });
+    await game.open({ level: 6 });
     // anda até uma rodada com mais de 5 objetos
     for (let i = 0; i < 8; i++) {
       const round = await game.currentRound();
@@ -58,7 +58,7 @@ test.describe('rodada', () => {
   });
 
   test('as figuras de resposta são números em ordem crescente', async ({ game }) => {
-    await game.open({ difficulty: 'medium' });
+    await game.open({ level: 3 });
     const symbols = await game.options().evaluateAll((els) => els.map((e) => Number(e.dataset.symbol)));
     expect(symbols).toEqual([...symbols].sort((a, b) => a - b));
     expect(symbols).toContain(game.plan.rounds[0].count);
@@ -67,7 +67,7 @@ test.describe('rodada', () => {
 
 test.describe('contar tocando', () => {
   test('cada objeto novo fala o próximo número e ganha o número ao lado', async ({ game }) => {
-    await game.open({ difficulty: 'hard' });
+    await game.open({ level: 6 });
     const prompt = Logic.promptFor(game.plan.rounds[0].object);
     const objects = game.page.locator('.obj');
 
@@ -112,7 +112,7 @@ test.describe('contar tocando', () => {
   });
 
   test('conta até 20 por extenso', async ({ game }) => {
-    await game.open({ difficulty: 'hard' });
+    await game.open({ level: 6 });
     for (let i = 0; i < 8; i++) {
       const round = await game.currentRound();
       if (round.count === Math.max(...game.plan.rounds.map((r) => r.count))) {
@@ -146,7 +146,7 @@ test.describe('responder', () => {
   });
 
   test('errar balança e some de leve; depois de 2 erros a certa respira', async ({ game }) => {
-    await game.open({ difficulty: 'medium' });
+    await game.open({ level: 3 });
     const right = await game.correctSymbol();
 
     const wrong0 = await game.wrongSymbol(0);
@@ -161,18 +161,18 @@ test.describe('responder', () => {
   });
 
   test('uma partida perfeita termina com 3 estrelas e envia o resultado', async ({ game }) => {
-    await game.open({ difficulty: 'easy' });
+    await game.open({ level: 1 });
     await game.solve();
 
     await expect(game.page.locator('#result-modal')).toBeVisible();
     await expect(game.page.locator('.star.earned')).toHaveCount(3);
     const [msg, ...others] = await complete(game);
     expect(others).toHaveLength(0);
-    expect(msg).toMatchObject({ gameId: 'how-many', difficulty: 'easy', moves: 0, matches: 8, stars: 3 });
+    expect(msg).toMatchObject({ gameId: 'how-many', level: 1, moves: 0, matches: 8, stars: 3 });
   });
 
   test('erros viram o "moves" do resultado e baixam as estrelas', async ({ game }) => {
-    await game.open({ difficulty: 'medium' });
+    await game.open({ level: 3 });
     for (let i = 0; i < 8; i++) {
       if (i % 2 === 0) await game.option(await game.wrongSymbol()).click();
       await game.answerRight();
@@ -182,7 +182,7 @@ test.describe('responder', () => {
   });
 
   test('todos os cinco objetos aparecem numa partida', async ({ game }) => {
-    await game.open({ difficulty: 'medium' });
+    await game.open({ level: 3 });
     expect(new Set(game.plan.rounds.map((r) => r.object.id)).size).toBeGreaterThanOrEqual(4);
     const seen = new Set();
     for (let i = 0; i < 8; i++) {

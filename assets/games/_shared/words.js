@@ -17,7 +17,7 @@
 
   // `id` é o nome do desenho (img/<id>.svg); `word` é a palavra por extenso.
   var WORDS = [
-    // duas sílabas (fácil e médio)
+    // duas sílabas (níveis 1 a 3)
     { id: 'bola',   word: 'bola',   syllables: ['bo', 'la'] },
     { id: 'casa',   word: 'casa',   syllables: ['ca', 'sa'] },
     { id: 'gato',   word: 'gato',   syllables: ['ga', 'to'] },
@@ -37,7 +37,7 @@
     { id: 'cama',   word: 'cama',   syllables: ['ca', 'ma'] },
     { id: 'lata',   word: 'lata',   syllables: ['la', 'ta'] },
     { id: 'vela',   word: 'vela',   syllables: ['ve', 'la'] },
-    // três sílabas (difícil)
+    // três sílabas (níveis 4 a 6)
     { id: 'banana', word: 'banana', syllables: ['ba', 'na', 'na'] },
     { id: 'janela', word: 'janela', syllables: ['ja', 'ne', 'la'] },
     { id: 'tomate', word: 'tomate', syllables: ['to', 'ma', 'te'] },
@@ -46,6 +46,10 @@
     { id: 'macaco', word: 'macaco', syllables: ['ma', 'ca', 'co'] },
     { id: 'coruja', word: 'coruja', syllables: ['co', 'ru', 'ja'] },
     { id: 'tucano', word: 'tucano', syllables: ['tu', 'ca', 'no'] },
+    { id: 'camisa', word: 'camisa', syllables: ['ca', 'mi', 'sa'] },
+    { id: 'batata', word: 'batata', syllables: ['ba', 'ta', 'ta'] },
+    { id: 'boneca', word: 'boneca', syllables: ['bo', 'ne', 'ca'] },
+    { id: 'camelo', word: 'camelo', syllables: ['ca', 'me', 'lo'] },
   ];
 
   /**

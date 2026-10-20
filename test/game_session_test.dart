@@ -19,26 +19,27 @@ void main() {
     backs = 0;
     session = GameSession(
       game: gameRegistry.first,
-      difficulty: GameDifficulty.medium,
+      difficulty: GameDifficulty.level2,
       narrator: narrator,
       store: store,
       onNavigateBack: () => backs++,
     );
   });
 
-  test('INIT leva dificuldade, preferência de som e recorde', () async {
+  test('INIT leva o nível, a preferência de som e o recorde', () async {
     expect(session.initMessage(), {
       'type': 'INIT',
       'gameId': 'memory',
-      'difficulty': 'medium',
+      'level': 2,
       'sound': true,
+      'outfit': <String>[],
       'best': null,
     });
 
     await store.setSoundEnabled(false);
     await store.saveResult(
       gameId: 'memory',
-      difficulty: GameDifficulty.medium,
+      difficulty: GameDifficulty.level2,
       stars: 2,
       moves: 11,
       timeSeconds: 40,
@@ -57,10 +58,10 @@ void main() {
         '"stars":3,"moves":8,"timeSeconds":25}',
       );
 
-      final record = store.record('memory', GameDifficulty.medium);
+      final record = store.record('memory', GameDifficulty.level2);
       expect(record?.stars, 3);
       expect(record?.moves, 8);
-      expect(store.record('memory', GameDifficulty.hard), isNull);
+      expect(store.record('memory', GameDifficulty.level3), isNull);
     },
   );
 
@@ -78,6 +79,20 @@ void main() {
 
     expect(narrator.spoken, isEmpty);
     expect(backs, 0);
-    expect(store.record('memory', GameDifficulty.medium), isNull);
+    expect(store.record('memory', GameDifficulty.level2), isNull);
+  });
+
+  test('INIT leva o que a Mia está vestindo (só itens abertos)', () async {
+    // 3 estrelas abrem a florzinha; a coroa (35) continua fechada
+    await store.saveResult(
+      gameId: 'memory',
+      difficulty: GameDifficulty.level1,
+      stars: 3,
+      moves: 4,
+      timeSeconds: 10,
+    );
+    await store.setWornOutfitIds(['flower', 'crown']);
+
+    expect(session.initMessage()['outfit'], ['flower']);
   });
 }

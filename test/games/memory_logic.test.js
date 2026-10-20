@@ -28,10 +28,12 @@ function flipTwo(state, a, b, now = 1000) {
 }
 
 describe('createGame', () => {
-  for (const [difficulty, { pairs }] of Object.entries(Logic.DIFFICULTY)) {
-    test(`${difficulty}: ${pairs} pares, todas as cartas escondidas`, () => {
-      const state = Logic.createGame(difficulty);
+  Logic.LEVELS.forEach(({ pairs }, i) => {
+    const level = i + 1;
+    test(`nível ${level}: ${pairs} pares, todas as cartas escondidas`, () => {
+      const state = Logic.createGame(level);
 
+      assert.equal(state.level, level);
       assert.equal(state.cards.length, pairs * 2);
       assert.equal(new Set(state.cards.map(c => c.id)).size, pairs * 2);
       assert.ok(state.cards.every(c => c.state === 'hidden'));
@@ -43,61 +45,66 @@ describe('createGame', () => {
         assert.match(pair[0].label, /^(Letra [A-Z]|Número \d{1,2})$/);
       }
     });
-  }
+  });
+
+  test('o tabuleiro cresce a cada nível', () => {
+    const pairs = Logic.LEVELS.map(l => l.pairs);
+    assert.deepEqual(pairs, [...pairs].sort((a, b) => a - b));
+    assert.equal(new Set(pairs).size, pairs.length, 'dois níveis com o mesmo número de pares');
+  });
 
   test('letras e números juntos: cerca de 60% letras', () => {
-    for (const [difficulty, letters, numbers] of [['easy', 4, 2], ['medium', 5, 3], ['hard', 6, 4]]) {
-      const state = Logic.createGame(difficulty);
+    // [nível, letras, números]
+    for (const [level, letters, numbers] of [[1, 2, 2], [2, 4, 2], [3, 5, 3], [4, 6, 4], [5, 7, 5], [6, 8, 6]]) {
+      const state = Logic.createGame(level);
       const symbols = [...new Set(state.cards.map(c => c.symbol))];
-      assert.equal(symbols.filter(x => /[A-Z]/.test(x)).length, letters, `${difficulty}: letras`);
-      assert.equal(symbols.filter(x => /^\d+$/.test(x)).length, numbers, `${difficulty}: números`);
+      assert.equal(symbols.filter(x => /[A-Z]/.test(x)).length, letters, `nível ${level}: letras`);
+      assert.equal(symbols.filter(x => /^\d+$/.test(x)).length, numbers, `nível ${level}: números`);
     }
   });
 
-  describe('alcance dos números por dificuldade', () => {
-    const numbersIn = (difficulty) =>
-      Logic.createGame(difficulty).cards.filter(c => c.kind === 'number').map(c => Number(c.symbol));
+  describe('alcance dos números por nível', () => {
+    const numbersIn = (level) =>
+      Logic.createGame(level).cards.filter(c => c.kind === 'number').map(c => Number(c.symbol));
 
-    test('fácil só tem algarismos soltos (até 9)', () => {
-      for (let i = 0; i < 1000; i++) {
-        for (const n of numbersIn('easy')) assert.ok(n >= 0 && n <= 9, `fácil sorteou ${n}`);
-      }
+    test('o alcance cresce: 5, 9, 15, 20, 30 e 50', () => {
+      assert.deepEqual(Logic.LEVELS.map(l => l.maxNumber), [5, 9, 15, 20, 30, 50]);
     });
 
-    test('médio vai até 20 e já tem números de dois algarismos', () => {
-      const seen = new Set();
-      for (let i = 0; i < 3000; i++) {
-        for (const n of numbersIn('medium')) {
-          assert.ok(n >= 0 && n <= 20, `médio sorteou ${n}`);
-          seen.add(n);
+    test('cada nível sorteia números até o seu máximo, e chega nele', () => {
+      for (const [i, { maxNumber }] of Logic.LEVELS.entries()) {
+        const seen = new Set();
+        for (let n = 0; n < 4000; n++) {
+          for (const x of numbersIn(i + 1)) {
+            assert.ok(x >= 0 && x <= maxNumber, `nível ${i + 1} sorteou ${x}`);
+            seen.add(x);
+          }
         }
+        assert.ok(seen.has(maxNumber), `nível ${i + 1} nunca sorteou o ${maxNumber}`);
       }
-      assert.ok([...seen].some(n => n >= 10), 'médio nunca sorteou um número de dois algarismos');
-      assert.ok(seen.has(20), 'médio nunca chegou ao 20');
     });
 
-    test('difícil vai até 50 e chega a 50', () => {
+    test('só a partir do nível 3 aparecem números de dois algarismos', () => {
       const seen = new Set();
-      for (let i = 0; i < 5000; i++) {
-        for (const n of numbersIn('hard')) {
-          assert.ok(n >= 0 && n <= 50, `difícil sorteou ${n}`);
-          seen.add(n);
-        }
+      for (let n = 0; n < 2000; n++) {
+        for (const level of [1, 2]) numbersIn(level).forEach(x => seen.add(x));
       }
-      assert.ok(seen.has(50), 'difícil nunca sorteou o 50');
-      assert.ok([...seen].some(n => n > 20), 'difícil nunca passou do 20');
+      assert.ok([...seen].every(x => x <= 9));
+      const high = new Set();
+      for (let n = 0; n < 2000; n++) numbersIn(3).forEach(x => high.add(x));
+      assert.ok([...high].some(x => x >= 10));
     });
 
-    test('o número de pares e a mistura de letras e números não mudam com o alcance', () => {
-      assert.equal(numbersIn('hard').length, 4 * 2);
-      assert.equal(numbersIn('medium').length, 3 * 2);
-      assert.equal(numbersIn('easy').length, 2 * 2);
+    test('o número de pares de números segue a mistura de 40%', () => {
+      for (const [level, numbers] of [[1, 2], [2, 2], [3, 3], [4, 4], [5, 5], [6, 6]]) {
+        assert.equal(numbersIn(level).length, numbers * 2, `nível ${level}`);
+      }
     });
   });
 
   test('não junta números com os algarismos invertidos (12 e 21)', () => {
     for (let i = 0; i < 3000; i++) {
-      const numbers = [...new Set(Logic.createGame('hard').cards.filter(c => c.kind === 'number').map(c => c.symbol))];
+      const numbers = [...new Set(Logic.createGame(6).cards.filter(c => c.kind === 'number').map(c => c.symbol))];
       for (const a of numbers) {
         for (const b of numbers) {
           assert.ok(!Logic.looksAlike(a, b), `${a} e ${b} juntos`);
@@ -116,15 +123,14 @@ describe('createGame', () => {
   });
 
   test('o tipo de cada carta bate com o símbolo', () => {
-    for (const card of Logic.createGame('hard').cards) {
+    for (const card of Logic.createGame(6).cards) {
       assert.equal(card.kind, /^[A-Z]$/.test(card.symbol) ? 'letter' : 'number');
     }
   });
 
   test('nunca junta símbolos parecidos (O e 0, I e 1) no mesmo tabuleiro', () => {
     for (let i = 0; i < 2000; i++) {
-      const difficulty = ['easy', 'medium', 'hard'][i % 3];
-      const symbols = new Set(Logic.createGame(difficulty).cards.map(c => c.symbol));
+      const symbols = new Set(Logic.createGame((i % 6) + 1).cards.map(c => c.symbol));
       for (const [a, b] of [['O', '0'], ['I', '1']]) {
         assert.ok(!(symbols.has(a) && symbols.has(b)), `${a} e ${b} juntos: ${[...symbols]}`);
       }
@@ -133,18 +139,21 @@ describe('createGame', () => {
 
   test('a mesma partida se repete com o mesmo sorteio (seed)', () => {
     const seeded = () => { let n = 7; return () => (n = (n * 16807) % 2147483647) / 2147483647; };
-    const a = Logic.createGame('medium', { random: seeded() });
-    const b = Logic.createGame('medium', { random: seeded() });
+    const a = Logic.createGame(3, { random: seeded() });
+    const b = Logic.createGame(3, { random: seeded() });
     assert.deepEqual(a.cards, b.cards);
   });
 
-  test('dificuldade desconhecida cai no fácil', () => {
-    assert.equal(Logic.createGame('impossivel').totalPairs, 6);
+  test('nível desconhecido cai no 1', () => {
+    for (const bad of ['impossivel', 0, 7, undefined, null, NaN]) {
+      assert.equal(Logic.createGame(bad).level, 1, String(bad));
+      assert.equal(Logic.createGame(bad).totalPairs, 4, String(bad));
+    }
   });
 
   test('cada partida nova recebe uma rodada nova', () => {
-    const first = Logic.createGame('easy');
-    const second = Logic.createGame('easy', { previousRound: first.round });
+    const first = Logic.createGame(1);
+    const second = Logic.createGame(1, { previousRound: first.round });
     assert.notEqual(first.round, second.round);
   });
 });
@@ -210,7 +219,7 @@ describe('símbolos e nomes falados', () => {
 
 describe('flip', () => {
   test('o cronômetro começa no primeiro toque, não ao criar o tabuleiro', () => {
-    const state = Logic.createGame('easy');
+    const state = Logic.createGame(1);
     assert.equal(state.startedAt, null);
     assert.equal(Logic.elapsedMs(state, 99_999), 0);
 
@@ -220,7 +229,7 @@ describe('flip', () => {
   });
 
   test('a segunda carta conta uma jogada e entra em verificação', () => {
-    const state = Logic.createGame('easy');
+    const state = Logic.createGame(1);
     const [a, b] = findMismatch(state);
 
     const next = flipTwo(state, a, b);
@@ -231,7 +240,7 @@ describe('flip', () => {
   });
 
   test('toques ignorados devolvem o mesmo estado', () => {
-    const state = Logic.createGame('easy');
+    const state = Logic.createGame(1);
     const [a, b] = findMismatch(state);
     const one = Logic.flip(state, a.id, 0);
 
@@ -244,7 +253,7 @@ describe('flip', () => {
   });
 
   test('não altera o estado anterior', () => {
-    const state = Logic.createGame('easy');
+    const state = Logic.createGame(1);
     const snapshot = JSON.stringify(state);
     Logic.flip(state, state.cards[0].id, 0);
     assert.equal(JSON.stringify(state), snapshot);
@@ -253,7 +262,7 @@ describe('flip', () => {
 
 describe('resolve', () => {
   test('par certo fica marcado como matched', () => {
-    const state = Logic.createGame('easy');
+    const state = Logic.createGame(1);
     const [a, b] = findPair(state);
 
     const { state: next, result } = Logic.resolve(flipTwo(state, a, b), state.round, 2000);
@@ -266,7 +275,7 @@ describe('resolve', () => {
   });
 
   test('par errado volta a ficar escondido', () => {
-    const state = Logic.createGame('easy');
+    const state = Logic.createGame(1);
     const [a, b] = findMismatch(state);
 
     const { state: next, result } = Logic.resolve(flipTwo(state, a, b), state.round, 2000);
@@ -277,12 +286,12 @@ describe('resolve', () => {
   });
 
   test('verificação agendada antes de reiniciar não afeta o jogo novo', () => {
-    const old = Logic.createGame('easy');
+    const old = Logic.createGame(1);
     const [a, b] = findPair(old);
     flipTwo(old, a, b); // verificação agendada com old.round
 
     // Reinício: o jogo novo reaproveita os mesmos ids de carta
-    const fresh = Logic.createGame('easy', { previousRound: old.round });
+    const fresh = Logic.createGame(1, { previousRound: old.round });
     const freshFlipped = flipTwo(fresh, ...findMismatch(fresh));
 
     const outcome = Logic.resolve(freshFlipped, old.round, 2000);
@@ -292,7 +301,7 @@ describe('resolve', () => {
   });
 
   test('completa o jogo no último par, com tempo desde o primeiro toque', () => {
-    let state = Logic.createGame('easy');
+    let state = Logic.createGame(1);
     let result;
     for (let pairId = 0; pairId < state.totalPairs; pairId++) {
       const [a, b] = state.cards.filter(c => c.pairId === pairId);
@@ -301,7 +310,7 @@ describe('resolve', () => {
 
     assert.equal(result, 'complete');
     assert.equal(state.phase, 'completed');
-    assert.equal(state.moves, 6);
+    assert.equal(state.moves, 4); // 4 pares, 1 jogada por par
     assert.equal(Logic.elapsedMs(state, 99_999), 10_000);
     assert.equal(Logic.calcStars(state), 3);
   });
@@ -309,11 +318,27 @@ describe('resolve', () => {
 
 describe('calcStars', () => {
   test('menos jogadas = mais estrelas', () => {
-    const base = Logic.createGame('easy');
-    assert.equal(Logic.calcStars({ ...base, moves: 6 }), 3);
-    assert.equal(Logic.calcStars({ ...base, moves: 10 }), 2);
+    const base = Logic.createGame(1); // 4 pares: 3 estrelas até 5 jogadas, 2 até 8
+    assert.equal(Logic.calcStars({ ...base, moves: 5 }), 3);
+    assert.equal(Logic.calcStars({ ...base, moves: 8 }), 2);
     assert.equal(Logic.calcStars({ ...base, moves: 30 }), 1);
     assert.equal(Logic.calcStars({ ...base, moves: 0 }), 3);
+  });
+
+  test('cada nível usa a sua exigência', () => {
+    for (const [i, { pairs, three, two }] of Logic.LEVELS.entries()) {
+      const base = Logic.createGame(i + 1);
+      assert.equal(Logic.calcStars({ ...base, moves: Math.floor(pairs / three) }), 3, `nível ${i + 1}`);
+      assert.equal(Logic.calcStars({ ...base, moves: Math.floor(pairs / two) }), 2, `nível ${i + 1}`);
+      assert.equal(Logic.calcStars({ ...base, moves: Math.ceil(pairs / two) + 8 }), 1, `nível ${i + 1}`);
+    }
+  });
+
+  test('as razões exigidas nunca sobem: tabuleiros maiores dão mais trabalho (e sorte)', () => {
+    const three = Logic.LEVELS.map(l => l.three);
+    const two = Logic.LEVELS.map(l => l.two);
+    assert.deepEqual(three, [...three].sort((a, b) => b - a));
+    assert.deepEqual(two, [...two].sort((a, b) => b - a));
   });
 });
 
