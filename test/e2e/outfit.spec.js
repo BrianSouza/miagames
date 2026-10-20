@@ -29,7 +29,7 @@ test.describe('os desenhos', () => {
   });
 });
 
-for (const gameId of ['which-letter', 'how-many', 'missing-syllable', 'paint']) {
+for (const gameId of ['which-letter', 'how-many', 'missing-syllable', 'paint', 'build-word']) {
   test.describe(`${gameId}: a Mia vestida na pergunta`, () => {
     test.use({ gameId });
 

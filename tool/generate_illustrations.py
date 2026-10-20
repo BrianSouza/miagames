@@ -218,6 +218,78 @@ write('assets/images/paint.svg',
 print('ícone gerado: assets/images/paint.svg')
 
 
+# ── Ícone do "Montar a palavra": a bola, "BO" encaixado e a peça "LA" sendo arrastada ──
+build_icon = (
+    '<g transform="translate(6 0) scale(0.62)">' + WORDS['bola']() + '</g>'
+    # a peça "BO" já no lugar (caixa verde)
+    + '<rect x="8" y="72" width="48" height="38" rx="9" fill="#EAFFF4" stroke="#2ED573" stroke-width="3"/>'
+    + stroke('M16 82 V100 M16 82 H23 Q29 82 29 87 Q29 92 23 92 H16 M23 92 Q31 92 31 96 Q31 100 23 100 H16', BLUE, 4.5)
+    + '<ellipse cx="44" cy="91" rx="7" ry="9.5" fill="none" stroke="#1565C0" stroke-width="4.5"/>'
+    # a lacuna que falta (tracejada) e, por cima dela, a peça "LA" levantada
+    + '<rect x="64" y="72" width="48" height="38" rx="9" fill="none" stroke="#90A4AE" stroke-width="3.5" stroke-dasharray="6 5"/>'
+    + '<g transform="rotate(-9 90 56)">'
+    '<rect x="72" y="52" width="40" height="36" rx="9" fill="#000" opacity=".15"/>'
+    '<rect x="70" y="46" width="40" height="36" rx="9" fill="#fff" stroke="#D9E2E5" stroke-width="2"/>'
+    + stroke('M80 54 V74 H90', BLUE, 4.5)
+    + stroke('M92 74 L97 54 L102 74 M94 68 H100', BLUE, 4.5)
+    + '</g>'
+)
+write('assets/images/build_word.svg',
+      f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">{build_icon}</svg>\n')
+print('ícone gerado: assets/images/build_word.svg')
+
+
+# ── Ícone do "Na caixa certa": duas caixas (letras e números) e uma peça a caminho ──
+sort_icon = (
+    # a caixa das letras, com um "A"
+    '<rect x="8" y="58" width="48" height="50" rx="10" fill="#E3F0FF" stroke="#54A0FF" stroke-width="3.5"/>'
+    + stroke('M20 96 L32 68 L44 96 M24 88 H40', BLUE, 5)
+    # a caixa dos números, com um "3"
+    + '<rect x="64" y="58" width="48" height="50" rx="10" fill="#FDE4EF" stroke="#FF6B9A" stroke-width="3.5"/>'
+    + stroke('M78 70 H96 L87 82 Q99 82 99 92 Q99 102 87 102 Q81 102 78 98', '#C2185B', 5)
+    # uma peça levantada ("B"), a caminho da caixa das letras
+    + '<g transform="rotate(-10 36 26)">'
+    '<rect x="21" y="14" width="34" height="34" rx="8" fill="#000" opacity=".15" transform="translate(2 5)"/>'
+    '<rect x="21" y="9" width="34" height="34" rx="8" fill="#fff" stroke="#D9E2E5" stroke-width="2"/>'
+    + stroke('M32 18 V34 M32 18 H38 Q43 18 43 22.5 Q43 27 38 27 H32 M38 27 Q44 27 44 31 Q44 34 38 34 H32', '#2D3436', 3.6)
+    + '</g>'
+)
+write('assets/images/sort_box.svg',
+      f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">{sort_icon}</svg>\n')
+print('ícone gerado: assets/images/sort_box.svg')
+
+
+# ── Ícone do "Quebra-cabeça": a bola em quatro peças, uma delas levantada ──────
+puzzle_icon = (
+    # o quadro, com três peças no lugar (a bola cortada em quatro) e o lugar tracejado da quarta
+    '<g transform="translate(10 12) scale(1.0)">'
+    '<clipPath id="pz"><rect x="0" y="0" width="100" height="100" rx="14"/></clipPath>'
+    '<g clip-path="url(#pz)">'
+    '<rect width="100" height="100" fill="#BFE6FF"/>'
+    '<g transform="scale(1)">' + WORDS['bola']() + '</g>'
+    '</g>'
+    # a peça de baixo à direita sai do quadro (cobre o canto com o fundo e fica tracejada)
+    '<rect x="50" y="50" width="50" height="50" fill="#fff"/>'
+    '<rect x="52" y="52" width="46" height="46" fill="none" stroke="#90A4AE" stroke-width="3.5" stroke-dasharray="6 5"/>'
+    '<line x1="50" y1="0" x2="50" y2="100" stroke="#fff" stroke-width="3"/>'
+    '<line x1="0" y1="50" x2="100" y2="50" stroke="#fff" stroke-width="3"/>'
+    '<rect x="0" y="0" width="100" height="100" rx="14" fill="none" stroke="#D9E2E5" stroke-width="2"/>'
+    '</g>'
+    # a peça levantada, com sombra (um pedaço da bola)
+    '<g transform="rotate(8 92 92)">'
+    '<rect x="72" y="74" width="40" height="40" rx="8" fill="#000" opacity=".15" transform="translate(2 5)"/>'
+    '<clipPath id="pz2"><rect x="72" y="70" width="40" height="40" rx="8"/></clipPath>'
+    '<g clip-path="url(#pz2)"><rect x="72" y="70" width="40" height="40" fill="#BFE6FF"/>'
+    # o quarto de baixo à direita da bola (de 50,50 a 100,100), reduzido a 80% e levado para a peça
+    '<g transform="translate(32 30) scale(0.8)">' + WORDS['bola']() + '</g></g>'
+    '<rect x="72" y="70" width="40" height="40" rx="8" fill="none" stroke="#fff" stroke-width="3"/>'
+    '</g>'
+)
+write('assets/images/puzzle.svg',
+      f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">{puzzle_icon}</svg>\n')
+print('ícone gerado: assets/images/puzzle.svg')
+
+
 # ── Acessórios da Mia (camadas transparentes, no quadro da Mia) ───────────────
 for outfit_id in OUTFITS:
     svg = outfit_svg(outfit_id)

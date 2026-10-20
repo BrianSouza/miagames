@@ -101,6 +101,66 @@ final List<GameModule> gameRegistry = [
       GameDifficulty.level6: 'Palavras maiores, pincel fino',
     },
   ),
+  const GameModule(
+    id: 'build-word',
+    displayName: 'Montar a palavra',
+    iconAsset: 'assets/images/build_word.svg',
+    accentColor: Color(0xFF54A0FF),
+    ageRange: [5, 6],
+    skills: ['Sílabas', 'Leitura', 'Arrastar'],
+    assetPath: 'assets/games/build-word/index.html',
+    scoreLabel: 'erros',
+    scoreLabelSingular: 'erro',
+    // Mantenha em sincronia com LEVELS em build-word-logic.js
+    difficultyHints: {
+      GameDifficulty.level1: 'Palavras de 2 sílabas',
+      GameDifficulty.level2: '2 sílabas, 1 peça a mais',
+      GameDifficulty.level3: '2 sílabas, peças parecidas',
+      GameDifficulty.level4: 'Palavras de 3 sílabas',
+      GameDifficulty.level5: '3 sílabas, 2 peças a mais',
+      GameDifficulty.level6: '3 sílabas, peças parecidas',
+    },
+  ),
+  const GameModule(
+    id: 'sort-box',
+    displayName: 'Na caixa certa',
+    iconAsset: 'assets/images/sort_box.svg',
+    accentColor: Color(0xFF7BD389),
+    ageRange: [4, 6],
+    skills: ['Letras', 'Números', 'Separar'],
+    assetPath: 'assets/games/sort-box/index.html',
+    scoreLabel: 'erros',
+    scoreLabelSingular: 'erro',
+    // Mantenha em sincronia com LEVELS em sort-box-logic.js
+    difficultyHints: {
+      GameDifficulty.level1: 'Letras e números · 6 peças',
+      GameDifficulty.level2: 'Vogais e consoantes · 6 peças',
+      GameDifficulty.level3: 'Dê até 5 objetos',
+      GameDifficulty.level4: 'Vogais, consoantes e números · 9 peças',
+      GameDifficulty.level5: 'Dê até 8 objetos',
+      GameDifficulty.level6: 'Com números até 20 · 12 peças',
+    },
+  ),
+  const GameModule(
+    id: 'puzzle',
+    displayName: 'Quebra-cabeça',
+    iconAsset: 'assets/images/puzzle.svg',
+    accentColor: Color(0xFFFFB347),
+    ageRange: [3, 6],
+    skills: ['Figuras', 'Palavras', 'Arrastar'],
+    assetPath: 'assets/games/puzzle/index.html',
+    scoreLabel: 'erros',
+    scoreLabelSingular: 'erro',
+    // Mantenha em sincronia com LEVELS em puzzle-logic.js
+    difficultyHints: {
+      GameDifficulty.level1: '2 peças',
+      GameDifficulty.level2: '4 peças',
+      GameDifficulty.level3: '6 peças',
+      GameDifficulty.level4: '9 peças',
+      GameDifficulty.level5: '12 peças, sem guia',
+      GameDifficulty.level6: '16 peças, sem guia',
+    },
+  ),
   // Próximos jogos:
   // GameModule(id: 'number-puzzle', displayName: 'Quebra-Cabeça', ...)
   // GameModule(id: 'color-match',   displayName: 'Mistura de Cores', ...)

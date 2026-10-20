@@ -682,8 +682,11 @@ void main() {
     });
 
     testWidgets('mostra o progresso e apaga com confirmação', (tester) async {
-      // tela alta: a lista é preguiçosa e só constrói o que cabe
-      tester.view.physicalSize = const Size(800, 3000);
+      // tela alta: a lista é preguiçosa e só constrói o que cabe (uma linha por jogo e nível)
+      tester.view.physicalSize = Size(
+        800,
+        600.0 + gameRegistry.length * GameDifficulty.values.length * 110,
+      );
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       await store.saveResult(

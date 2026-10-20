@@ -25,7 +25,7 @@
 
   /**
    * Monta o cabeçalho dentro de `#header`.
-   * options: { onReset, onListen (se houver, mostra o botão "ouvir de novo") }
+   * options: { onReset, onListen (se houver, mostra o botão "ouvir de novo"), maxDots (opcional) }
    */
   function createHeader(options) {
     var header = document.getElementById('header');
@@ -49,30 +49,39 @@
       document.getElementById('btn-listen').addEventListener('click', options.onListen);
     }
 
+    // Quantas estrelas de progresso se mostram no máximo: nos jogos com muitas peças (uma estrela por
+    // peça ficaria minúscula num celular), cada estrela vale mais de uma peça. Sem `maxDots`, é uma por unidade.
+    var maxDots = options.maxDots || Infinity;
+    var units = 0;
+
     return {
-      /** Quantas estrelas de progresso existem (uma por rodada ou par) */
+      /** Quantas unidades (rodadas, pares ou peças) a partida tem; as estrelas são uma por unidade, até `maxDots` */
       setTotal: function (total) {
+        units = total;
+        var shown = Math.min(total, maxDots);
         var html = '';
-        for (var i = 0; i < total; i++) {
+        for (var i = 0; i < shown; i++) {
           html += '<svg class="dot" viewBox="0 0 24 24"><path d="' + STAR + '"/></svg>';
         }
         progressEl.innerHTML = html;
-        progressEl.setAttribute('data-total', total);
+        progressEl.setAttribute('data-total', shown);
         progressEl.setAttribute('data-done', 0);
       },
-      /** Acende as primeiras `done` estrelas (só a última acesa ganha a animação) */
+      /** Acende as estrelas das primeiras `done` unidades (só a última acesa ganha a animação) */
       setDone: function (done) {
         var dots = progressEl.children;
+        // com menos estrelas que unidades, cada estrela vale `units / dots` unidades; a última só acende ao terminar
+        var lit = done >= units ? dots.length : Math.floor((done * dots.length) / Math.max(units, 1));
         var before = Number(progressEl.getAttribute('data-done')) || 0;
         for (var i = 0; i < dots.length; i++) {
-          var lit = i < done;
-          if (lit && i >= before) {
+          var on = i < lit;
+          if (on && i >= before) {
             dots[i].classList.remove('done');
             void dots[i].getBoundingClientRect();   // reinicia a animação
           }
-          dots[i].classList.toggle('done', lit);
+          dots[i].classList.toggle('done', on);
         }
-        progressEl.setAttribute('data-done', done);
+        progressEl.setAttribute('data-done', lit);
       },
     };
   }

@@ -1,0 +1,75 @@
+/* Só o que é do "Montar a palavra": o desenho, as lacunas e a bandeja de sílabas.
+   O arranjo da tela é do kit (.board-layout) e o arrastar também (.draggable). */
+.build-area {
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Tamanhos (--pic-size, --tile): calculados no jogo, pela largura E altura das áreas */
+.picture {
+  width: var(--pic-size, 160px);
+  height: var(--pic-size, 160px);
+  flex-shrink: 0;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.slots, .tray { display: grid; }
+.slots {
+  grid-auto-flow: column;
+  grid-auto-columns: var(--tile, 80px);
+  gap: var(--gap, 10px);
+}
+.tray {
+  grid-template-columns: repeat(var(--cols, 3), var(--tile, 80px));
+  grid-auto-rows: var(--tile, 80px);
+  gap: var(--gap, 10px);
+}
+
+/* A lacuna: uma caixa tracejada do tamanho da peça. Com a peça dentro, vira uma caixa verde. */
+.slot {
+  width: var(--tile, 80px);
+  height: var(--tile, 80px);
+  display: grid;
+  place-items: center;
+  border: 4px dashed #90A4AE;
+  border-radius: 20px;
+}
+.slot.filled { border-color: transparent; background: #EAFFF4; box-shadow: 0 0 0 4px var(--success); }
+/* a dica: a lacuna "respira" (a classe .pulse é do kit; a classe .hint dele é a dica escrita do cabeçalho) */
+.slot.pulse { border-color: var(--turquoise-dark); }
+
+/* A casa da peça na bandeja: fica quando a peça sai, para as outras não mudarem de lugar */
+.cell {
+  width: var(--tile, 80px);
+  height: var(--tile, 80px);
+  border-radius: 20px;
+  background: rgba(0,0,0,.05);
+}
+
+.tile {
+  width: var(--tile, 80px);
+  height: var(--tile, 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--toy-shadow);
+  font-family: 'Andika', 'Trebuchet MS', 'Verdana', sans-serif;
+  font-weight: 700;
+  font-size: calc(var(--tile, 80px) * .44);
+  line-height: 1;
+  color: #1565C0;   /* mesmas cores das letras do Jogo da Memória */
+}
+/* Encaixada: cabe dentro da borda da lacuna (4 px de cada lado), certinho no centro dela */
+.tile.placed {
+  width: calc(var(--tile, 80px) - 8px);
+  height: calc(var(--tile, 80px) - 8px);
+  cursor: default;
+  touch-action: auto;
+  box-shadow: none;
+  background: transparent;
+  color: #1B7F46;
+}
+.tile.placed.pop { animation: pop .45s cubic-bezier(.34,1.56,.64,1); }
