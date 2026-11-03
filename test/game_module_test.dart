@@ -35,18 +35,27 @@ void main() {
     expect(GameDifficulty.level4.previous, GameDifficulty.level3);
   });
 
-  test('todo jogo tem os 6 níveis e um texto para cada um', () {
-    for (final game in gameRegistry) {
-      expect(game.difficulties, GameDifficulty.values, reason: game.id);
-      for (final difficulty in game.difficulties) {
-        expect(
-          game.hintFor(difficulty),
-          isNotEmpty,
-          reason: '${game.id} ${difficulty.label}',
-        );
+  test(
+    'todo jogo com níveis tem os 6 e um texto para cada um; o jogo livre não tem nível',
+    () {
+      expect(gameRegistry.where((g) => g.freePlay).map((g) => g.id), [
+        'mia-room',
+      ]);
+      for (final game in gameRegistry.where((g) => g.freePlay)) {
+        expect(game.difficulties, isEmpty, reason: game.id);
       }
-    }
-  });
+      for (final game in gameRegistry.where((g) => !g.freePlay)) {
+        expect(game.difficulties, GameDifficulty.values, reason: game.id);
+        for (final difficulty in game.difficulties) {
+          expect(
+            game.hintFor(difficulty),
+            isNotEmpty,
+            reason: '${game.id} ${difficulty.label}',
+          );
+        }
+      }
+    },
+  );
 
   test('sem texto próprio, a dica fica vazia', () {
     const game = GameModule(

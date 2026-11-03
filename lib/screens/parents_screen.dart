@@ -5,7 +5,9 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_spacing.dart';
 import '../core/widgets/star_rating.dart';
 import '../modules/game_module.dart';
+import '../modules/furniture.dart';
 import '../modules/game_registry.dart';
+import '../modules/outfit_progress.dart';
 
 /// Área dos pais: liga/desliga voz e sons, mostra o progresso e permite
 /// apagá-lo. Só é aberta depois do bloqueio parental.
@@ -72,7 +74,7 @@ class ParentsScreen extends StatelessWidget {
             ),
             const Divider(height: AppSpacing.xl),
             _SectionTitle('Progresso'),
-            for (final game in gameRegistry) ...[
+            for (final game in gameRegistry.where((g) => !g.freePlay)) ...[
               Padding(
                 padding: const EdgeInsets.fromLTRB(
                   AppSpacing.md,
@@ -95,6 +97,20 @@ class ParentsScreen extends StatelessWidget {
                   record: store.record(game.id, diff),
                 ),
             ],
+            // O quarto da Mia não tem níveis nem recorde: aqui só aparece quanto já abriu
+            for (final game in gameRegistry.where((g) => g.freePlay))
+              ListTile(
+                title: Text(
+                  game.displayName,
+                  style: text.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                subtitle: Text(
+                  '${unlockedFurniture(totalStars(store)).length} de ${furniture.length} móveis abertos',
+                ),
+              ),
             Padding(
               padding: const EdgeInsets.all(AppSpacing.md),
               child: OutlinedButton.icon(

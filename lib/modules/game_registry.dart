@@ -161,6 +161,18 @@ final List<GameModule> gameRegistry = [
       GameDifficulty.level6: '16 peças, sem guia',
     },
   ),
+  const GameModule(
+    id: 'mia-room',
+    displayName: 'Quarto da Mia',
+    iconAsset: 'assets/images/mia_room.svg',
+    accentColor: Color(0xFFB794F4),
+    ageRange: [3, 6],
+    skills: ['Criatividade', 'Arrastar'],
+    assetPath: 'assets/games/mia-room/index.html',
+    // Brincar livre: sem níveis, sem recorde. As estrelas dos outros jogos abrem os móveis.
+    freePlay: true,
+    difficulties: [],
+  ),
   // Próximos jogos:
   // GameModule(id: 'number-puzzle', displayName: 'Quebra-Cabeça', ...)
   // GameModule(id: 'color-match',   displayName: 'Mistura de Cores', ...)

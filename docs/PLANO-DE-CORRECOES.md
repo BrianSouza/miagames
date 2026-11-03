@@ -70,6 +70,7 @@ Legenda: ✅ feito · ⏭️ fica para depois
 | 4.21 | Arrastar para aprender a ler | **Montar a palavra**: arrasta as sílabas para as lacunas embaixo do desenho; 6 níveis (de 2 a 3 sílabas, com 0 a 3 peças a mais, parecidas no fim de cada grupo) | ✅ |
 | 4.22 | Arrastar para separar e contar | **Na caixa certa**: separa letras e números, vogais e consoantes, ou dá a quantidade pedida ao prato ("Dê 3 maçãs para a Mia!"); a voz conta cada objeto; 6 níveis | ✅ |
 | 4.23 | Arrastar para montar | **Quebra-cabeça**: o desenho de uma palavra cortado em 2 a 16 peças, com o desenho esmaecido de guia nos 4 primeiros níveis; a palavra aparece escrita quando fica pronto | ✅ |
+| 4.24 | Brincar livre de arrastar móveis | **Quarto da Mia**: jogo livre (sem níveis, estrelas nem fim) em que se arrastam 13 móveis para o quarto, a Mia também se arrasta, há desfazer e o quarto fica salvo. As estrelas somadas abrem os móveis; novo móvel é comemorado ao voltar de um jogo. Nova mensagem `SAVE_STATE` na ponte, conferida no Flutter | ✅ |
 | 4.13 | Casar maiúscula com minúscula ("A" com "a"), como a escola ensina | Modo extra do Jogo da Memória, com cartas de pares diferentes | ⏭️ |
 | 4.14 | Jogos só de letras ou só de números, e escolher o conjunto de letras (ex.: só as do nome) | Seletor de conteúdo antes da partida | ⏭️ |
 

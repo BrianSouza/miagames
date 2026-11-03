@@ -18,6 +18,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mia import POSES, OUTFITS, head_svg, mono_svg, outfit_svg
 from words_art import WORDS, VIEWBOX as WORD_VIEWBOX
+from furniture_art import FURNITURE
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 
@@ -288,6 +289,34 @@ puzzle_icon = (
 write('assets/images/puzzle.svg',
       f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">{puzzle_icon}</svg>\n')
 print('ícone gerado: assets/images/puzzle.svg')
+
+
+# ── "Quarto da Mia": um desenho por móvel ─────────────────────────────────────
+for name, art in FURNITURE.items():
+    write(f'assets/games/mia-room/img/{name}.svg',
+          f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">{art()}</svg>\n')
+print(f'{len(FURNITURE)} móveis gerados')
+
+# ícone: um cantinho do quarto (parede, janela, chão, caminha e abajur)
+room_icon = (
+    '<clipPath id="rm"><rect x="6" y="10" width="108" height="100" rx="20"/></clipPath>'
+    '<g clip-path="url(#rm)">'
+    '<rect x="6" y="10" width="108" height="100" fill="#FFE9C7"/>'
+    '<rect x="6" y="74" width="108" height="40" fill="#D9A66C"/>'
+    '<rect x="6" y="70" width="108" height="6" fill="#B5793F"/>'
+    '<path d="M6 92 H114 M6 104 H114 M30 76 V114 M62 76 V114 M94 76 V114" fill="none" stroke="#C48E55" stroke-width="2"/>'
+    # a janela
+    '<rect x="68" y="22" width="34" height="34" rx="6" fill="#BFE6FF" stroke="#fff" stroke-width="4"/>'
+    '<path d="M85 22 V56 M68 39 H102" stroke="#fff" stroke-width="3"/>'
+    '<circle cx="76" cy="31" r="4" fill="#FFD93B"/>'
+    '</g>'
+    '<rect x="6" y="10" width="108" height="100" rx="20" fill="none" stroke="#D9E2E5" stroke-width="2"/>'
+    + '<g transform="translate(10 36) scale(0.72)">' + FURNITURE['bed']() + '</g>'
+    + '<g transform="translate(76 58) scale(0.42)">' + FURNITURE['lamp']() + '</g>'
+)
+write('assets/images/mia_room.svg',
+      f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">{room_icon}</svg>\n')
+print('ícone gerado: assets/images/mia_room.svg')
 
 
 # ── Acessórios da Mia (camadas transparentes, no quadro da Mia) ───────────────

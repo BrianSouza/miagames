@@ -67,6 +67,7 @@ class ProgressStore extends ChangeNotifier {
   static const _voiceKey = 'settings.voice';
   static const _progressPrefix = 'progress.';
   static const _outfitKey = 'outfit.worn';
+  static const _statePrefix = 'state.';
 
   static String _recordKey(String gameId, GameDifficulty difficulty) =>
       '$_progressPrefix$gameId.${difficulty.name}';
@@ -97,6 +98,17 @@ class ProgressStore extends ChangeNotifier {
 
   Future<void> setWornOutfitIds(List<String> ids) async {
     await _prefs.setStringList(_outfitKey, ids);
+    notifyListeners();
+  }
+
+  // ── Estado de um jogo livre ─────────────────────────────────────────────────
+
+  /// O que um jogo sem níveis guardou (o quarto da Mia: um JSON), ou `null`. Fica fora do prefixo
+  /// `progress.`: apagar o progresso não apaga o quarto (os móveis fechados é que saem dele ao ler).
+  String? gameState(String gameId) => _prefs.getString('$_statePrefix$gameId');
+
+  Future<void> setGameState(String gameId, String json) async {
+    await _prefs.setString('$_statePrefix$gameId', json);
     notifyListeners();
   }
 

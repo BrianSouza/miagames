@@ -25,7 +25,8 @@
 
   /**
    * Monta o cabeçalho dentro de `#header`.
-   * options: { onReset, onListen (se houver, mostra o botão "ouvir de novo"), maxDots (opcional) }
+   * options: { onReset, onListen (se houver, mostra o botão "ouvir de novo"), maxDots (opcional),
+   *            resetLabel (opcional: o nome do botão para leitores de tela; o padrão é "Reiniciar") }
    */
   function createHeader(options) {
     var header = document.getElementById('header');
@@ -35,7 +36,7 @@
       (options.onListen
         ? '<button id="btn-listen" class="icon-btn" aria-label="Ouvir de novo">' + icon('listen') + '</button>'
         : '') +
-      '<button id="btn-reset" class="icon-btn" aria-label="Reiniciar">' + icon('reset') + '</button>' +
+      '<button id="btn-reset" class="icon-btn" aria-label="' + (options.resetLabel || 'Reiniciar') + '">' + icon('reset') + '</button>' +
       '<span id="exit-hint" class="hint hidden" role="status">Segure ← para sair</span>';
 
     var progressEl = document.getElementById('progress');

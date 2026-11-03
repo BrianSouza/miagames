@@ -7,6 +7,7 @@ import '../core/widgets/game_tile.dart';
 import '../core/widgets/level_unlocked_dialog.dart';
 import '../core/widgets/mia_avatar.dart';
 import '../core/widgets/parental_gate.dart';
+import '../modules/furniture.dart';
 import '../modules/game_module.dart';
 import '../modules/game_registry.dart';
 import '../modules/level_progress.dart';
@@ -71,6 +72,7 @@ class HomeScreen extends StatelessWidget {
   ) async {
     final before = unlockedCount(store, game);
     final outfitsBefore = unlockedOutfits(totalStars(store)).length;
+    final furnitureBefore = unlockedFurniture(totalStars(store)).length;
     await Navigator.push<void>(
       context,
       MaterialPageRoute(
@@ -116,6 +118,28 @@ class HomeScreen extends StatelessWidget {
         await store.setWornOutfitIds(wear(store.wornOutfitIds, outfit));
       }
     }
+
+    // As estrelas abriram um móvel para o quarto da Mia? A criança pode ir vê-lo na hora.
+    final room = findGameById('mia-room');
+    final newFurniture = unlockedFurniture(
+      totalStars(store),
+    ).skip(furnitureBefore);
+    for (final item in newFurniture) {
+      if (!context.mounted || room == null || game.freePlay) return;
+      narrator.speak(furnitureUnlockedSpeech(item));
+      final seeNow = await showFurnitureUnlockedDialog(context, item: item);
+      if (seeNow && context.mounted) {
+        await _openGame(context, room, GameDifficulty.level1);
+        return; // os outros móveis novos já estão na bandeja do quarto
+      }
+    }
+  }
+
+  /// Um jogo com níveis abre a trilha; um jogo livre (o quarto da Mia) abre direto.
+  void _onGameTap(BuildContext context, GameModule game) {
+    if (!game.freePlay) return _showLevelPicker(context, game);
+    narrator.speak(game.displayName);
+    _openGame(context, game, GameDifficulty.level1);
   }
 
   void _showLevelPicker(BuildContext context, GameModule game) {
@@ -188,8 +212,7 @@ class HomeScreen extends StatelessWidget {
                       delegate: SliverChildBuilderDelegate(
                         (ctx, i) => GameTile(
                           game: gameRegistry[i],
-                          onTap: () =>
-                              _showLevelPicker(context, gameRegistry[i]),
+                          onTap: () => _onGameTap(context, gameRegistry[i]),
                         ),
                         childCount: gameRegistry.length,
                       ),

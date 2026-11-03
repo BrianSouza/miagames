@@ -30,6 +30,8 @@ miagames/
 │   │   ├── game_registry.dart     ← Lista de jogos exibidos na Home
 │   │   ├── level_progress.dart    ← Níveis abertos (2 estrelas abrem o próximo) e o que a Mia sugere
 │   │   ├── outfits.dart           ← Os acessórios da Mia, seus limiares de estrelas e a regra de vestir
+│   │   ├── furniture.dart         ← Os móveis do quarto da Mia e as estrelas que abrem cada um
+│   │   ├── room_state.dart        ← O quarto salvo (móveis e a Mia, em frações) e a conferência do que vem da WebView
 │   │   └── outfit_progress.dart   ← Total de estrelas e o que a Mia veste agora
 │   └── screens/
 │       ├── home_screen.dart       ← A Mia acena + cartões grandes dos jogos (grade adaptativa)
@@ -57,6 +59,7 @@ miagames/
 ├── assets/games/build-word/       ← Montar a palavra (arrasta sílabas para as lacunas)
 ├── assets/games/sort-box/         ← Na caixa certa (arrasta peças para as caixas ou objetos para o prato)
 ├── assets/games/puzzle/           ← Quebra-cabeça (o desenho de uma palavra cortado em peças só com CSS)
+├── assets/games/mia-room/         ← Quarto da Mia (jogo livre: arrasta móveis para o quarto; img/ com os móveis)
 ├── assets/games/how-many/         ← Quantos tem? (+ img/ com os objetos)
 ├── assets/games/missing-syllable/ ← Qual sílaba falta? (lógica, game.js + img/ com o desenho de cada palavra; a lista de palavras é `_shared/words.js`)
 ├── assets/games/memory/           ← Jogo da Memória (mini-app web)
@@ -97,6 +100,10 @@ não deve mudar. Os PNGs de `assets/icon` e `assets/splash` são só entrada das
 | jogo → Flutter | `SPEAK {text}` | Fala um texto. A voz do navegador não funciona na WebView do Android |
 | jogo → Flutter | `NAVIGATE_BACK` | Volta para a Home |
 | jogo → Flutter | `GAME_COMPLETE {stars, moves, timeSeconds}` | Fim da partida: o Flutter salva o recorde |
+| jogo → Flutter | `SAVE_STATE {state}` | Só dos jogos livres (o quarto da Mia): guarda o que a criança fez. O Flutter confere cada campo antes de salvar |
+
+Um jogo livre (`GameModule.freePlay`, como o quarto da Mia) recebe a mais, no `INIT`, `furniture` (cada móvel com `id`, `name`, `stars` e `open`),
+`totalStars` e `state` (o quarto salvo, já sem os móveis que fecharam).
 
 O jogo envia com `MiaGamesFlutter.postMessage(JSON)`. O Flutter ignora
 mensagens malformadas, e a WebView só navega para os arquivos locais do jogo.
@@ -123,6 +130,7 @@ A Home, a trilha de níveis e a tela de jogo funcionam automaticamente. O jogo r
 | **Montar a palavra** | **Arrasta** as sílabas para as lacunas embaixo do desenho de uma palavra | 2 sílabas sem peças a mais → +1 → +2 parecidas; 3 sílabas sem peças a mais → +2 → +3 parecidas |
 | **Na caixa certa** | **Arrasta** letras e números para a caixa certa, ou dá ao prato os objetos pedidos | letras × números → vogais × consoantes → "Dê até 5 objetos" → 3 caixas → "Dê até 8" → 3 caixas com 12 peças e números até 20 |
 | **Quebra-cabeça** | **Arrasta** as peças do desenho de uma palavra para o lugar delas | 2, 4, 6 e 9 peças com o desenho esmaecido de guia → 12 e 16 peças sem guia |
+| **Quarto da Mia** | **Brinca livre**: arrasta móveis para o quarto da Mia, muda de lugar, guarda, desfaz; a Mia também se arrasta | sem níveis: as estrelas dos outros jogos abrem os 13 móveis |
 
 ### Vestir a Mia
 
@@ -193,6 +201,19 @@ A filha gosta de tocar e arrastar coisas, então três jogos usam o **kit de arr
 - O desenho de uma palavra (SVG quadrado) é cortado **só com CSS**: cada peça mostra a sua fatia (`background-size` e `background-position`), sobre um fundo em degradê que muda de cor pelo quadro, para as peças de "céu" também se distinguirem. O quadro é sempre quadrado, então o desenho nunca é esticado; as peças da bandeja são cópias menores dos lugares da grade (mesma proporção) e crescem ao encaixar
 - Grades de 2×1, 2×2, 3×2, 3×3, 4×3 e 4×4; nos níveis 1 a 4 o desenho esmaecido aparece atrás da grade como guia. Quando o desenho fica pronto, a palavra aparece escrita e a voz a diz
 - Em celular pequeno o quadro fica pequeno (~140 px); por isso as peças da bandeja podem ser até 1,5 vez maiores que o lugar delas (e encolhem ao encaixar). As 16 peças do nível 6 ficam com ~45 px de lado: é o limite de caber numa bandeja
+
+### Quarto da Mia
+
+- **Jogo livre**: sem níveis, sem erro, sem estrela e sem fim (`GameModule.freePlay`). O cartão da Home abre o jogo direto, sem a trilha de níveis; ele não manda `GAME_COMPLETE` e não grava recorde
+- O quarto é de CSS (parede, rodapé, chão de tábuas, janela). A criança arrasta um móvel da **bandeja** para o quarto: entra uma **cópia** (dá para pôr o mesmo móvel várias vezes, até 24 peças) e o móvel continua na bandeja. Arrastar um móvel do quarto o muda de lugar; arrastar para a bandeja o **guarda**. Quem está mais embaixo no quarto aparece na frente; o **tapete** fica sempre por baixo. Largado fora do quarto, o móvel **não se perde**: fica na borda mais perto
+- **A Mia também se arrasta** (vestida, com os acessórios do guarda-roupa) e nunca sai do quarto. Tocar num móvel diz o nome; tocar na Mia, ela cumprimenta
+- O botão do cabeçalho vira **Desfazer** (até 30 passos). Reiniciar o quarto de uma vez seria perigoso para quem tem 5 anos
+- **Móveis**: 13 (`lib/modules/furniture.dart`), os 3 primeiros (caminha, tapete, vasinho) já abertos e os outros abertos pelas **estrelas somadas** de todos os jogos (4, 8, 13, 19, 26, 34, 43, 53, 64 e 78). As estrelas **não se gastam**. Na bandeja, o móvel fechado fica cinza com cadeado e as estrelas que pedem; tocar nele diz "Abajur. Faltam 3 estrelas para abrir!". Quem decide o que está aberto é o Flutter (`INIT.furniture[].open`)
+- Ao voltar de um jogo, se as estrelas abriram um móvel, a Mia comemora ("O quarto da Mia ganhou: Mesinha!") e a criança pode ir vê-lo na hora
+- A bandeja tem **setas** que viram a página (nas telas grandes cabe tudo numa página; em celular em pé, de 4 em 4): rolar não serve, porque os móveis usam o dedo para arrastar
+- **Guardar**: o jogo manda `SAVE_STATE` meio segundo depois da última mudança, ao sair (segurar o voltar) e ao fechar a página. O quarto é salvo em frações (0 a 1) do tamanho dele, então sobrevive a girar o aparelho. Primeira vez: o quarto já vem arrumado com caminha, tapete e vasinho
+- **Segurança do que vem da WebView** (`room_state.dart`): só entram móveis que existem e estão abertos, com id só de letras minúsculas (vira nome de arquivo), posições finitas trazidas para 0 a 1, no máximo 40 peças e 8 KB. Apagar o progresso fecha os móveis de novo e eles saem do quarto ao ler, mas ficam guardados e voltam quando as estrelas voltarem
+- Para acrescentar um móvel: desenhe-o em `tool/furniture_art.py`, acrescente-o em `lib/modules/furniture.dart` e em `SIZES` de `mia-room/room-logic.js`, e rode `python3 tool/generate_illustrations.py`; os testes conferem que o catálogo, os tamanhos e os desenhos concordam
 
 ### Colorir
 

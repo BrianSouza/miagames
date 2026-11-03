@@ -19,6 +19,7 @@ const PaintLogic = require('../../assets/games/paint/paint-logic.js');
 const BuildWordLogic = require('../../assets/games/build-word/build-word-logic.js');
 const SortBoxLogic = require('../../assets/games/sort-box/sort-box-logic.js');
 const PuzzleLogic = require('../../assets/games/puzzle/puzzle-logic.js');
+const fs = require('node:fs');
 
 const gameUrl = (id) =>
   pathToFileURL(path.join(__dirname, `../../assets/games/${id}/index.html`)).href;
@@ -54,7 +55,7 @@ class Game {
   }
 
   /** Abre o jogo e envia o INIT, como o Flutter faz quando a página carrega. */
-  async open({ level = 1, sound = true, best = null, seed = null, outfit = [] } = {}) {
+  async open({ level = 1, sound = true, best = null, seed = null, outfit = [], extra = {} } = {}) {
     await this.page.clock.install({ time: new Date('2030-01-01T00:00:00Z') });
     if (seed !== null) {
       // Tabuleiro previsível: o sorteio da página usa o mesmo gerador que o Node
@@ -83,7 +84,7 @@ class Game {
     await this.page.evaluate(
       (init) =>
         window.handleFlutterMessage({ type: 'INIT', ...init }),
-      { gameId: this.id, level, sound, best, outfit },
+      { gameId: this.id, level, sound, best, outfit, ...extra },
     );
     return this;
   }
@@ -691,7 +692,104 @@ class PuzzleGame extends DragGame {
   }
 }
 
+/** Os móveis do Flutter (lib/modules/furniture.dart): de lá vêm os ids, os nomes e as estrelas */
+const FURNITURE = [
+  ...fs
+    .readFileSync(path.join(__dirname, '../../lib/modules/furniture.dart'), 'utf8')
+    .matchAll(/Furniture\(id: '(\w+)', name: '([^']+)', stars: (\d+)\)/g),
+].map((m) => ({ id: m[1], name: m[2], stars: Number(m[3]) }));
+
+/**
+ * "Quarto da Mia": jogo livre. Arrasta móveis da bandeja para o quarto, muda de lugar, guarda, desfaz.
+ * O INIT leva os móveis (com o que está aberto para `totalStars`) e o quarto salvo (`state`).
+ */
+class RoomGame extends DragGame {
+  constructor(page, problems) {
+    super(page, problems, 'mia-room');
+  }
+
+  async open({ totalStars = 0, state = null, furniture = FURNITURE, ...rest } = {}) {
+    this.totalStars = totalStars;
+    this.furniture = furniture.map((f) => ({ ...f, open: f.stars <= totalStars }));
+    await super.open({ ...rest, extra: { totalStars, state, furniture: this.furniture } });
+    await this.page.waitForSelector('#room .mia-actor');
+    return this;
+  }
+
+  room() {
+    return this.page.locator('#room');
+  }
+
+  /** Móveis colocados no quarto (sem a Mia) */
+  items() {
+    return this.page.locator('#room .item');
+  }
+
+  item(uid) {
+    return this.page.locator(`#room .item[data-uid="${uid}"]`);
+  }
+
+  mia() {
+    return this.page.locator('#room .mia-actor');
+  }
+
+  /** O móvel da bandeja (na página que estiver aparecendo) */
+  source(id) {
+    return this.page.locator(`#tray .source[data-furniture="${id}"]`);
+  }
+
+  trayIds() {
+    return this.page.locator('#tray .source').evaluateAll((els) => els.map((e) => e.dataset.furniture));
+  }
+
+  /** Vira as páginas da bandeja até o móvel `id` aparecer (e devolve o locator dele) */
+  async reveal(id) {
+    const next = this.page.locator('#page-next');
+    const prev = this.page.locator('#page-prev');
+    while ((await this.source(id).count()) === 0 && (await next.isEnabled())) await next.click();
+    while ((await this.source(id).count()) === 0 && (await prev.isEnabled())) await prev.click();
+    return this.source(id);
+  }
+
+  /** O ponto da tela que é a fração (fx, fy) do quarto */
+  async roomPoint(fx, fy) {
+    const b = await this.room().boundingBox();
+    return { x: b.x + b.width * fx, y: b.y + b.height * fy };
+  }
+
+  /** Arrasta um móvel (ou a Mia) para a fração do quarto: o CENTRO dele pára ali */
+  async dragToRoom(from, fx, fy, opts = {}) {
+    const p = await this.roomPoint(fx, fy);
+    await this.dragToPoint(from, p.x, p.y, opts);
+    if (opts.drop !== false) await this.settled();
+  }
+
+  /** Arrasta até o centro da bandeja (para guardar o móvel) */
+  async dragToTray(from) {
+    await this.dragTo(from, this.page.locator('#tray-area'));
+    await this.settled();
+  }
+
+  /** O centro de um móvel do quarto, em fração do quarto */
+  async fractionOf(locator) {
+    const r = await this.room().boundingBox();
+    const b = await locator.boundingBox();
+    return { x: (b.x + b.width / 2 - r.x) / r.width, y: (b.y + b.height / 2 - r.y) / r.height };
+  }
+
+  /** Mensagens SAVE_STATE enviadas ao Flutter */
+  async saves() {
+    return (await this.messages()).filter((m) => m.type === 'SAVE_STATE').map((m) => m.state);
+  }
+
+  /** Espera o jogo guardar (o jogo espera um pouquinho depois da última mudança) */
+  saveDelay() {
+    return this.tick(500);
+  }
+}
+
 const CLASSES = {
+  'mia-room': (page, problems) => new RoomGame(page, problems),
   puzzle: (page, problems) => new PuzzleGame(page, problems),
   'sort-box': (page, problems) => new SortBoxGame(page, problems),
   'build-word': (page, problems) => new BuildWordGame(page, problems),
@@ -730,4 +828,4 @@ const shownDots = (total) => Math.min(total, MAX_DOTS);
 const litDots = (done, total) =>
   done >= total ? shownDots(total) : Math.floor((done * shownDots(total)) / total);
 
-module.exports = { test, expect, CHECK_DELAY_MS, ADVANCE_DELAY_MS, prng, MAX_DOTS, shownDots, litDots };
+module.exports = { test, expect, CHECK_DELAY_MS, ADVANCE_DELAY_MS, prng, MAX_DOTS, shownDots, litDots, FURNITURE };

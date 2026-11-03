@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../../modules/furniture.dart';
 import '../../modules/game_module.dart';
 import '../../modules/outfits.dart';
 import '../theme/app_colors.dart';
@@ -32,6 +34,23 @@ Future<bool> showOutfitUnlockedDialog(
   );
   return wear ?? false;
 }
+
+/// "O quarto da Mia ganhou o abajur!": um móvel novo abriu. Devolve `true` se a criança quiser
+/// ir ver o móvel no quarto agora.
+Future<bool> showFurnitureUnlockedDialog(
+  BuildContext context, {
+  required Furniture item,
+}) async {
+  final see = await showDialog<bool>(
+    context: context,
+    builder: (_) => _FurnitureUnlockedDialog(item: item),
+  );
+  return see ?? false;
+}
+
+/// O que a voz diz ao ganhar um móvel
+String furnitureUnlockedSpeech(Furniture item) =>
+    'Parabéns! O quarto da Mia ganhou: ${item.name.toLowerCase()}!';
 
 /// O que a voz diz ao ganhar um acessório
 String outfitUnlockedSpeech(Outfit outfit) =>
@@ -150,6 +169,77 @@ class _OutfitUnlockedDialog extends StatelessWidget {
                   backgroundColor: const Color(0xFF0B7A73),
                 ),
                 child: const Icon(Icons.checkroom_rounded, size: 52),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              style: TextButton.styleFrom(minimumSize: const Size(96, 56)),
+              child: const Icon(
+                Icons.home_rounded,
+                size: 32,
+                color: AppColors.textSecond,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FurnitureUnlockedDialog extends StatelessWidget {
+  const _FurnitureUnlockedDialog({required this.item});
+
+  final Furniture item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.background,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // o móvel novo, grande, num círculo (o desenho é o mesmo que a criança arrasta no quarto)
+            MiaPopIn(
+              child: Container(
+                width: 160,
+                height: 160,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: SvgPicture.asset(
+                  'assets/games/mia-room/img/${item.id}.svg',
+                  semanticsLabel: item.name,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'O quarto da Mia ganhou: ${item.name}!',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            SizedBox(
+              width: 96,
+              height: 96,
+              child: FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: FilledButton.styleFrom(
+                  shape: const CircleBorder(),
+                  backgroundColor: const Color(0xFF0B7A73),
+                ),
+                child: const Icon(Icons.bedroom_child_rounded, size: 52),
               ),
             ),
             TextButton(

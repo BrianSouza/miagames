@@ -22,6 +22,7 @@ sealed class GameMessage {
         _ => null,
       },
       'GAME_COMPLETE' => GameComplete.fromJson(data),
+      'SAVE_STATE' => SaveState.fromJson(data),
       _ => null,
     };
   }
@@ -60,5 +61,23 @@ class GameComplete extends GameMessage {
     if (moves is! int || moves < 0) return null;
     if (time is! int || time < 0) return null;
     return GameComplete(stars: stars, moves: moves, timeSeconds: time);
+  }
+}
+
+/// Um jogo sem níveis (o quarto da Mia) pediu para guardar o que a criança fez. O conteúdo é do
+/// jogo; quem o lê (veja `room_state.dart`) confere cada campo antes de salvar.
+class SaveState extends GameMessage {
+  const SaveState(this.state);
+
+  /// O estado cabe com folga em 8 KB (são no máximo 40 móveis); mais que isso não é do jogo.
+  static const maxEncodedLength = 8192;
+
+  final Map<String, dynamic> state;
+
+  static SaveState? fromJson(Map<String, dynamic> data) {
+    final state = data['state'];
+    if (state is! Map<String, dynamic>) return null;
+    if (jsonEncode(state).length > maxEncodedLength) return null;
+    return SaveState(state);
   }
 }
