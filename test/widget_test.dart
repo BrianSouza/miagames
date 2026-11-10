@@ -682,8 +682,12 @@ void main() {
     });
 
     testWidgets('mostra o progresso e apaga com confirmação', (tester) async {
-      // tela alta: a lista é preguiçosa e só constrói o que cabe
-      tester.view.physicalSize = const Size(800, 3000);
+      // tela alta: a lista é preguiçosa e só constrói o que cabe (uma linha por jogo e nível)
+      final levels = gameRegistry.fold<int>(
+        0,
+        (sum, game) => sum + game.difficulties.length,
+      );
+      tester.view.physicalSize = Size(800, 800.0 + levels * 110);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       await store.saveResult(
@@ -697,7 +701,6 @@ void main() {
       await openParentsArea(tester);
 
       expect(find.text('Recorde: 6 jogadas · 1 partida'), findsOneWidget);
-      final levels = gameRegistry.length * GameDifficulty.values.length;
       expect(find.text('Ainda não jogou'), findsNWidgets(levels - 1));
 
       await tester.scrollUntilVisible(find.text('Apagar progresso'), 100);
@@ -709,5 +712,216 @@ void main() {
       expect(store.record('memory', GameDifficulty.level1), isNull);
       expect(find.text('Ainda não jogou'), findsNWidgets(levels));
     });
+  });
+
+  group('Quarto da Mia', () {
+    Future<void> tall(WidgetTester tester) async {
+      // tela alta: a grade é preguiçosa e só constrói o que cabe
+      tester.view.physicalSize = const Size(800, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+    }
+
+    testWidgets(
+      'o cartão abre o jogo direto, sem a trilha de níveis, e fala o nome',
+      (tester) async {
+        await tall(tester);
+        final opened = <String>[];
+        await tester.pumpWidget(
+          app(
+            gameBuilder: (context, game, difficulty) {
+              opened.add('${game.id}/${difficulty.level}');
+              return const Scaffold(body: Text('tela do quarto'));
+            },
+          ),
+        );
+
+        await tester.tap(find.text('Quarto da Mia'));
+        await tester.pumpAndSettle();
+
+        expect(opened, ['mia-room/1']);
+        expect(find.text('tela do quarto'), findsOneWidget);
+        expect(find.byKey(const ValueKey('level-1')), findsNothing);
+        expect(narrator.spoken, ['Quarto da Mia']);
+      },
+    );
+
+    testWidgets('voltar do quarto leva à Home, sem comemorar nível nem móvel', (
+      tester,
+    ) async {
+      await tall(tester);
+      await tester.pumpWidget(
+        app(
+          gameBuilder: (context, game, difficulty) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('voltar'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Quarto da Mia'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('voltar'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(GameTile), findsNWidgets(gameRegistry.length));
+      expect(find.byType(Dialog), findsNothing);
+    });
+
+    group('móvel novo ao jogar', () {
+      Widget fakeGame(
+        BuildContext context,
+        GameModule game,
+        GameDifficulty difficulty,
+        List<String> opened,
+      ) {
+        opened.add(game.id);
+        return Scaffold(
+          body: TextButton(
+            onPressed: () async {
+              await store.saveResult(
+                gameId: game.id,
+                difficulty: difficulty,
+                stars: 3,
+                moves: 3,
+                timeSeconds: 20,
+              );
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('terminar'),
+          ),
+        );
+      }
+
+      Future<void> playMemory(WidgetTester tester, List<String> opened) async {
+        await tall(tester);
+        await tester.pumpWidget(
+          app(gameBuilder: (c, g, d) => fakeGame(c, g, d, opened)),
+        );
+        await tester.tap(find.text('Jogo da Memória'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('level-1')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('terminar'));
+        await tester.pumpAndSettle();
+      }
+
+      /// Fecha os diálogos de nível aberto e de acessório que também aparecem
+      Future<void> dismissOthers(WidgetTester tester) async {
+        while (find.byType(Dialog).evaluate().isNotEmpty &&
+            find.textContaining('O quarto da Mia ganhou').evaluate().isEmpty) {
+          await tester.tap(find.byIcon(Icons.home_rounded));
+          await tester.pumpAndSettle();
+        }
+      }
+
+      testWidgets(
+        'as estrelas que abrem um móvel mostram "O quarto da Mia ganhou"',
+        (tester) async {
+          // 3 estrelas já guardadas em outro jogo: com mais 3, são 6 e a mesinha (4) abre
+          await store.saveResult(
+            gameId: 'paint',
+            difficulty: GameDifficulty.level1,
+            stars: 3,
+            moves: 3,
+            timeSeconds: 20,
+          );
+          final opened = <String>[];
+
+          await playMemory(tester, opened);
+          await dismissOthers(tester);
+
+          expect(find.text('O quarto da Mia ganhou: Mesinha!'), findsOneWidget);
+          expect(
+            narrator.spoken.last,
+            'Parabéns! O quarto da Mia ganhou: mesinha!',
+          );
+        },
+      );
+
+      testWidgets('"ver no quarto" abre o quarto na hora', (tester) async {
+        await store.saveResult(
+          gameId: 'paint',
+          difficulty: GameDifficulty.level1,
+          stars: 3,
+          moves: 3,
+          timeSeconds: 20,
+        );
+        final opened = <String>[];
+        await playMemory(tester, opened);
+        await dismissOthers(tester);
+
+        await tester.tap(
+          find.descendant(
+            of: find.byType(Dialog),
+            matching: find.byIcon(Icons.bedroom_child_rounded),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(opened.last, 'mia-room');
+      });
+
+      testWidgets('o botão de início fecha o aviso sem abrir o quarto', (
+        tester,
+      ) async {
+        await store.saveResult(
+          gameId: 'paint',
+          difficulty: GameDifficulty.level1,
+          stars: 3,
+          moves: 3,
+          timeSeconds: 20,
+        );
+        final opened = <String>[];
+        await playMemory(tester, opened);
+        await dismissOthers(tester);
+
+        await tester.tap(find.byIcon(Icons.home_rounded));
+        await tester.pumpAndSettle();
+
+        expect(opened, ['memory']);
+        expect(find.byType(Dialog), findsNothing);
+      });
+
+      testWidgets('sem estrelas suficientes para um móvel, nada aparece', (
+        tester,
+      ) async {
+        final opened = <String>[];
+        await playMemory(
+          tester,
+          opened,
+        ); // 3 estrelas: só os 3 livres (4 abre a mesinha)
+        await dismissOthers(tester);
+
+        expect(find.textContaining('O quarto da Mia ganhou'), findsNothing);
+      });
+    });
+
+    testWidgets(
+      'a Área dos pais mostra quantos móveis já abriram, sem níveis nem recorde',
+      (tester) async {
+        // tela alta: a lista é preguiçosa e a linha do quarto vem depois de uma linha por jogo e nível
+        final levels = gameRegistry.fold<int>(
+          0,
+          (sum, game) => sum + game.difficulties.length,
+        );
+        tester.view.physicalSize = Size(800, 800.0 + levels * 110);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(app());
+        await openParentsArea(tester);
+
+        expect(find.text('3 de 13 móveis abertos'), findsOneWidget);
+        // o quarto não tem "Ainda não jogou": só os jogos com níveis
+        expect(
+          find.text('Ainda não jogou'),
+          findsNWidgets(
+            gameRegistry.fold<int>(0, (sum, g) => sum + g.difficulties.length),
+          ),
+        );
+      },
+    );
   });
 }

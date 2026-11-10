@@ -1,0 +1,148 @@
+/* Só o que é do "Quarto da Mia": o quarto, os móveis que se arrastam e a bandeja.
+   O arrastar é do kit (.draggable). */
+.room-stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  gap: 10px;
+  padding: 0 14px 14px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) minmax(150px, 26vh);
+}
+@media (orientation: landscape) {
+  .room-stage {
+    grid-template-columns: minmax(0, 1fr) minmax(210px, 28vw);
+    grid-template-rows: minmax(0, 1fr);
+  }
+}
+
+/* ── O quarto: parede, rodapé, chão de tábuas e uma janela ── */
+.room {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: var(--toy-shadow);
+  background: linear-gradient(#FFE9C7 0 58%, #E7B677 58% 100%);
+}
+.room::before {          /* o rodapé */
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 58%;
+  height: 12px;
+  background: #C98B4B;
+}
+.room::after {           /* as tábuas do chão */
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(58% + 12px);
+  bottom: 0;
+  background: repeating-linear-gradient(90deg, transparent 0 62px, rgba(0,0,0,.07) 62px 64px);
+  pointer-events: none;
+}
+.window {
+  position: absolute;
+  top: 7%;
+  right: 7%;
+  width: 20%;
+  aspect-ratio: 1;
+  border: 6px solid #fff;
+  border-radius: 12px;
+  background: linear-gradient(#BFE6FF, #E6F5FF);
+  box-shadow: 0 3px 0 rgba(0,0,0,.08);
+  pointer-events: none;
+}
+.window::before, .window::after { content: ''; position: absolute; background: #fff; }
+.window::before { left: 50%; top: 0; bottom: 0; width: 5px; transform: translateX(-50%); }
+.window::after  { top: 50%; left: 0; right: 0; height: 5px; transform: translateY(-50%); }
+
+/* ── O que está no quarto: móveis e a Mia (tamanho e lugar são do jogo, em px, a partir de frações) ── */
+.room .actor {
+  position: absolute;
+  z-index: 10;
+  cursor: grab;
+}
+.room .actor img { width: 100%; height: 100%; pointer-events: none; }
+.room .actor.pop { animation: pop .45s cubic-bezier(.34,1.56,.64,1); }
+/* a Mia e os acessórios dela se empilham (a grade de uma célula é do kit: .mia-stack) */
+.room .mia-actor { display: grid; place-items: center; }
+.room .mia-actor .mia { width: 100%; height: 100%; }
+
+/* ── A bandeja: móveis para arrastar, de poucos em poucos ── */
+.tray-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+}
+@media (orientation: landscape) {
+  .tray-area { flex-direction: column; }
+}
+.page-btn { width: 52px; height: 52px; }
+.page-btn:disabled { opacity: .3; box-shadow: none; pointer-events: none; }
+@media (orientation: landscape) {
+  .page-btn svg { transform: rotate(90deg); }
+}
+
+.tray {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  align-self: stretch;
+  display: grid;
+  gap: var(--gap, 8px);
+  place-content: center;
+  grid-template-columns: repeat(var(--cols, 3), var(--src, 72px));
+  grid-auto-rows: var(--src, 72px);
+}
+
+/* A casa do móvel na bandeja: fica quando ele sai, para os outros não mudarem de lugar */
+.cell { width: var(--src, 72px); height: var(--src, 72px); border-radius: 18px; background: rgba(0,0,0,.05); }
+
+.source {
+  position: relative;
+  width: var(--src, 72px);
+  height: var(--src, 72px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--toy-shadow);
+}
+.source img { width: 82%; height: 82%; pointer-events: none; }
+/* Fechado: cinza, com o cadeado e as estrelas que faltam para abrir */
+.source.locked { background: #ECEFF1; box-shadow: none; cursor: default; }
+.source.locked img { filter: grayscale(1); opacity: .45; }
+.source .lock {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #fff;
+  color: #546E7A;
+}
+.source .lock svg { width: 16px; height: 16px; }
+.source .need {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 3px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  color: #7A5300;
+  pointer-events: none;
+}

@@ -30,6 +30,8 @@ miagames/
 │   │   ├── game_registry.dart     ← Lista de jogos exibidos na Home
 │   │   ├── level_progress.dart    ← Níveis abertos (2 estrelas abrem o próximo) e o que a Mia sugere
 │   │   ├── outfits.dart           ← Os acessórios da Mia, seus limiares de estrelas e a regra de vestir
+│   │   ├── furniture.dart         ← Os móveis do quarto da Mia e as estrelas que abrem cada um
+│   │   ├── room_state.dart        ← O quarto salvo (móveis e a Mia, em frações) e a conferência do que vem da WebView
 │   │   └── outfit_progress.dart   ← Total de estrelas e o que a Mia veste agora
 │   └── screens/
 │       ├── home_screen.dart       ← A Mia acena + cartões grandes dos jogos (grade adaptativa)
@@ -47,12 +49,17 @@ miagames/
 │   ├── result.js  confetti.js     ← Tela de parabéns (Mia, estrelas, confete)
 │   ├── game-utils.js              ← Contas comuns: encaixe na tela, estrelas, recorde, tempo
 │   ├── quiz.js                    ← Motor dos jogos de responder (rodadas, erros, dica, estrelas)
+│   ├── drag.js  drag-logic.js     ← Kit de arrastar (Pointer Events, peça que levanta, encaixe) e as contas dele (Node)
 │   ├── quiz-ui.js                 ← Tela dos jogos de responder (ponte, rodadas, retorno)
 │   ├── sounds.js                  ← Efeitos sonoros sintetizados (Web Audio)
 │   ├── symbols.js                 ← Letras, números por extenso e símbolos que se confundem (testado no Node)
 │   └── fonts/                     ← Andika (fonte para alfabetização, licença OFL)
 ├── assets/games/which-letter/     ← Qual é a letra? (index.html, which-letter-logic.js, game.js)
 ├── assets/games/paint/            ← Colorir (canvas em camadas: máscara, tinta recortada, contorno)
+├── assets/games/build-word/       ← Montar a palavra (arrasta sílabas para as lacunas)
+├── assets/games/sort-box/         ← Na caixa certa (arrasta peças para as caixas ou objetos para o prato)
+├── assets/games/puzzle/           ← Quebra-cabeça (o desenho de uma palavra cortado em peças só com CSS)
+├── assets/games/mia-room/         ← Quarto da Mia (jogo livre: arrasta móveis para o quarto; img/ com os móveis)
 ├── assets/games/how-many/         ← Quantos tem? (+ img/ com os objetos)
 ├── assets/games/missing-syllable/ ← Qual sílaba falta? (lógica, game.js + img/ com o desenho de cada palavra; a lista de palavras é `_shared/words.js`)
 ├── assets/games/memory/           ← Jogo da Memória (mini-app web)
@@ -93,6 +100,10 @@ não deve mudar. Os PNGs de `assets/icon` e `assets/splash` são só entrada das
 | jogo → Flutter | `SPEAK {text}` | Fala um texto. A voz do navegador não funciona na WebView do Android |
 | jogo → Flutter | `NAVIGATE_BACK` | Volta para a Home |
 | jogo → Flutter | `GAME_COMPLETE {stars, moves, timeSeconds}` | Fim da partida: o Flutter salva o recorde |
+| jogo → Flutter | `SAVE_STATE {state}` | Só dos jogos livres (o quarto da Mia): guarda o que a criança fez. O Flutter confere cada campo antes de salvar |
+
+Um jogo livre (`GameModule.freePlay`, como o quarto da Mia) recebe a mais, no `INIT`, `furniture` (cada móvel com `id`, `name`, `stars` e `open`),
+`totalStars` e `state` (o quarto salvo, já sem os móveis que fecharam).
 
 O jogo envia com `MiaGamesFlutter.postMessage(JSON)`. O Flutter ignora
 mensagens malformadas, e a WebView só navega para os arquivos locais do jogo.
@@ -116,12 +127,16 @@ A Home, a trilha de níveis e a tela de jogo funcionam automaticamente. O jogo r
 | **Quantos tem?** | Conta os objetos (tocar em cada um fala o número) e escolhe quantos são | contar até 3, 5, 10, 15, 20 e 20 (com 5 respostas) |
 | **Colorir** | Escolhe a cor e pinta com o dedo **dentro** de uma letra ou palavra (a tinta não sai do contorno) | vogais → letras de traços retos → todas as maiúsculas → minúsculas → palavras de 4 letras (com o desenho) → palavras de 6 letras; o pincel afina e a tolerância encolhe |
 | **Qual sílaba falta?** | Vê o desenho de uma palavra e a palavra com uma sílaba faltando (`BO _`); escolhe a que completa | palavras de 2 sílabas (a lacuna é sempre a última no nível 1) → 2 sílabas com respostas parecidas → palavras de 3 sílabas, com 3, 4 e 5 respostas |
+| **Montar a palavra** | **Arrasta** as sílabas para as lacunas embaixo do desenho de uma palavra | 2 sílabas sem peças a mais → +1 → +2 parecidas; 3 sílabas sem peças a mais → +2 → +3 parecidas |
+| **Na caixa certa** | **Arrasta** letras e números para a caixa certa, ou dá ao prato os objetos pedidos | letras × números → vogais × consoantes → "Dê até 5 objetos" → 3 caixas → "Dê até 8" → 3 caixas com 12 peças e números até 20 |
+| **Quebra-cabeça** | **Arrasta** as peças do desenho de uma palavra para o lugar delas | 2, 4, 6 e 9 peças com o desenho esmaecido de guia → 12 e 16 peças sem guia |
+| **Quarto da Mia** | **Brinca livre**: arrasta móveis para o quarto da Mia, muda de lugar, guarda, desfaz; a Mia também se arrasta | sem níveis: as estrelas dos outros jogos abrem os 13 móveis |
 
 ### Vestir a Mia
 
 As estrelas viram acessórios. A soma das estrelas de todos os jogos e níveis abre, em ordem, **9 itens** para a Mia
 (florzinha com 3 estrelas, chapéu de festa 7, óculos 12, tiara 18, cachecol 26, coroa 35, óculos escuros 46,
-medalha 58 e chapéu de pirata 72; o máximo possível é 90). Os itens ficam em 3 espaços (cabeça, rosto e pescoço) e
+medalha 58 e chapéu de pirata 72; o máximo possível é 144, com os 8 jogos). Os itens ficam em 3 espaços (cabeça, rosto e pescoço) e
 cada espaço veste um item só.
 
 - **Guarda-roupa**: o botão de cabide na Home abre a tela, com a Mia vestida em cima e os itens embaixo. Tocar num item aberto o veste (a voz fala o nome) ou o tira; tocar num fechado fala quantas estrelas faltam
@@ -154,6 +169,51 @@ Os jogos de responder têm **8 rodadas**. A pontuação que vai
 para o Flutter (`moves`) é o **número de erros**, e a Área dos pais a chama de "erros"
 (na Memória, "jogadas"). Errar não tem castigo: a figura some de leve, a voz diz "Tente de novo!"
 e, depois de 2 erros na mesma rodada, a resposta certa "respira" e a pergunta se repete.
+
+### Jogos de arrastar
+
+A filha gosta de tocar e arrastar coisas, então três jogos usam o **kit de arrastar** (`_shared/drag.js`, com as contas em
+`drag-logic.js`, testadas no Node):
+
+- Usa **Pointer Events** com a captura do ponteiro, como o Colorir (o arrastar HTML5 não funciona em toque na WebView). Só **um dedo por vez**; um segundo dedo, o botão direito do mouse e o `pointercancel` são tratados
+- A peça **levanta**: cresce 10% e fica 28 px acima do dedo, para o dedo não esconder o que se arrasta. Quem decide o alvo é o **centro da peça**, com uma **folga de 20 px** em volta de cada alvo (a criança não precisa acertar na mosca); quem contém o ponto de verdade vence quem só o alcança pela folga
+- Ao soltar, o jogo responde `'accept'` ou `'reject'`: a peça desliza até o lugar novo ou volta suave para onde estava. Soltar **fora de todos os alvos não conta erro**. Um toque curto, sem arrastar, é um "toque" (a voz diz o que é)
+- A casa da peça fica na bandeja quando ela sai, para as outras não mudarem de lugar. Girar a tela, reiniciar ou perder o dedo no meio do arrasto cancela o gesto e a peça volta
+- Depois de 2 erros na mesma rodada, a peça certa e o lugar certo "respiram" (`.pulse`; a classe `.hint` do kit é a dica escrita do cabeçalho)
+- Nos jogos com muitas peças, o cabeçalho mostra no máximo **8 estrelas** de progresso (cada uma vale mais de uma peça): uma estrela por peça ficaria minúscula num celular
+- Estrelas: os erros (peças soltas no lugar errado) viram o `moves` do Flutter, como no Colorir. Cada nível tem `three` e `two` na tabela `LEVELS`: o máximo de erros que ainda vale 3 e 2 estrelas
+
+### Montar a palavra
+
+- O desenho e a palavra (os do "Qual sílaba falta?") com uma lacuna por sílaba, e uma bandeja de sílabas para arrastar. Acertar fala a sílaba; a última fala "bô, lá, bola! Muito bem!". Errar fala a sílaba escolhida ("tô. Tente de novo!")
+- As peças a mais **nunca formam outra palavra** que a criança conheça (a mesma conferência do "Qual sílaba falta?"). Nos níveis "parecidos" (3 e 6) repartem a consoante ou a vogal com as da palavra
+- Palavras com a mesma sílaba duas vezes (BA-NA-NA): qualquer "NA" serve em qualquer lacuna "NA"
+- 6 palavras por partida. Estrelas: palavras montadas **sem erro** (2★ com 3, 3, 4, 4, 5 e 5; 3★ com 5, 5, 5, 6, 6 e 6)
+
+### Na caixa certa
+
+- **Separar** (níveis 1, 2, 4 e 6): as peças são letras e números (todos da mesma cor: a cor entregaria a caixa); cada uma vai para a caixa certa e encolhe lá dentro. A voz diz "Bê. Consoante!". Nunca há símbolos que se confundem (O e 0)
+- **Dar** (níveis 3 e 5): "Dê três maçãs para a Mia!" — o prato mostra o número; a voz **conta** cada objeto que cai ("Um", "Dois", "Três maçãs! Muito bem!") e a rodada termina no número pedido. Na pilha há objetos pedidos a mais e objetos de outro tipo: soltar um deles é erro ("Essa é uma bola. Procure as maçãs!"). O gênero e o número são os do "Quantos tem?"
+- Uma partida tem no máximo 12 peças a colocar. Estrelas pelos erros: até 1 erro vale 3★ e até 3 ou 4 valem 2★
+
+### Quebra-cabeça
+
+- O desenho de uma palavra (SVG quadrado) é cortado **só com CSS**: cada peça mostra a sua fatia (`background-size` e `background-position`), sobre um fundo em degradê que muda de cor pelo quadro, para as peças de "céu" também se distinguirem. O quadro é sempre quadrado, então o desenho nunca é esticado; as peças da bandeja são cópias menores dos lugares da grade (mesma proporção) e crescem ao encaixar
+- Grades de 2×1, 2×2, 3×2, 3×3, 4×3 e 4×4; nos níveis 1 a 4 o desenho esmaecido aparece atrás da grade como guia. Quando o desenho fica pronto, a palavra aparece escrita e a voz a diz
+- Em celular pequeno o quadro fica pequeno (~140 px); por isso as peças da bandeja podem ser até 1,5 vez maiores que o lugar delas (e encolhem ao encaixar). As 16 peças do nível 6 ficam com ~45 px de lado: é o limite de caber numa bandeja
+
+### Quarto da Mia
+
+- **Jogo livre**: sem níveis, sem erro, sem estrela e sem fim (`GameModule.freePlay`). O cartão da Home abre o jogo direto, sem a trilha de níveis; ele não manda `GAME_COMPLETE` e não grava recorde
+- O quarto é de CSS (parede, rodapé, chão de tábuas, janela). A criança arrasta um móvel da **bandeja** para o quarto: entra uma **cópia** (dá para pôr o mesmo móvel várias vezes, até 24 peças) e o móvel continua na bandeja. Arrastar um móvel do quarto o muda de lugar; arrastar para a bandeja o **guarda**. Quem está mais embaixo no quarto aparece na frente; o **tapete** fica sempre por baixo. Largado fora do quarto, o móvel **não se perde**: fica na borda mais perto
+- **A Mia também se arrasta** (vestida, com os acessórios do guarda-roupa) e nunca sai do quarto. Tocar num móvel diz o nome; tocar na Mia, ela cumprimenta
+- O botão do cabeçalho vira **Desfazer** (até 30 passos). Reiniciar o quarto de uma vez seria perigoso para quem tem 5 anos
+- **Móveis**: 13 (`lib/modules/furniture.dart`), os 3 primeiros (caminha, tapete, vasinho) já abertos e os outros abertos pelas **estrelas somadas** de todos os jogos (4, 8, 13, 19, 26, 34, 43, 53, 64 e 78). As estrelas **não se gastam**. Na bandeja, o móvel fechado fica cinza com cadeado e as estrelas que pedem; tocar nele diz "Abajur. Faltam 3 estrelas para abrir!". Quem decide o que está aberto é o Flutter (`INIT.furniture[].open`)
+- Ao voltar de um jogo, se as estrelas abriram um móvel, a Mia comemora ("O quarto da Mia ganhou: Mesinha!") e a criança pode ir vê-lo na hora
+- A bandeja tem **setas** que viram a página (nas telas grandes cabe tudo numa página; em celular em pé, de 4 em 4): rolar não serve, porque os móveis usam o dedo para arrastar
+- **Guardar**: o jogo manda `SAVE_STATE` meio segundo depois da última mudança, ao sair (segurar o voltar) e ao fechar a página. O quarto é salvo em frações (0 a 1) do tamanho dele, então sobrevive a girar o aparelho. Primeira vez: o quarto já vem arrumado com caminha, tapete e vasinho
+- **Segurança do que vem da WebView** (`room_state.dart`): só entram móveis que existem e estão abertos, com id só de letras minúsculas (vira nome de arquivo), posições finitas trazidas para 0 a 1, no máximo 40 peças e 8 KB. Apagar o progresso fecha os móveis de novo e eles saem do quarto ao ler, mas ficam guardados e voltam quando as estrelas voltarem
+- Para acrescentar um móvel: desenhe-o em `tool/furniture_art.py`, acrescente-o em `lib/modules/furniture.dart` e em `SIZES` de `mia-room/room-logic.js`, e rode `python3 tool/generate_illustrations.py`; os testes conferem que o catálogo, os tamanhos e os desenhos concordam
 
 ### Colorir
 

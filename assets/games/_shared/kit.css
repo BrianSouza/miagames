@@ -343,3 +343,30 @@ html, body {
   }
   .board-layout .asker .mia { width: min(22vh, 120px); height: min(22vh, 120px); }
 }
+
+/* ── Jogos de arrastar: o item levanta, segue o dedo e desliza de volta (ou para o lugar) ── */
+.draggable {
+  position: relative;
+  touch-action: none;           /* sem isto a WebView rola a tela ou cancela o arrasto */
+  cursor: grab;
+  -webkit-touch-callout: none;
+}
+.draggable.dragging {
+  z-index: 100;
+  cursor: grabbing;
+  transition: none !important;   /* arrastando, a peça segue o dedo na hora, mesmo que a volta anterior não tenha acabado */
+  filter: drop-shadow(0 10px 8px rgba(0,0,0,.25));
+}
+/* Uma animação de CSS manda no `transform` mais que o estilo inline: sem isto, a peça que está
+   pulsando (a dica) não acompanharia o dedo */
+.draggable.dragging, .draggable.returning { animation: none !important; }
+.draggable.returning {
+  z-index: 50;
+  transition: transform .26s cubic-bezier(.34,1.3,.64,1);
+}
+/* O alvo sob o item: cresce um pouco e ganha um anel, para a criança saber que vai encaixar */
+.drop-target { transition: transform .12s, box-shadow .12s, background-color .12s; }
+.drop-target.drop-over {
+  transform: scale(1.06);
+  box-shadow: 0 0 0 5px var(--turquoise);
+}

@@ -23,7 +23,11 @@ void main() {
     });
 
     test('o último item é alcançável: pede menos que o máximo de estrelas', () {
-      final max = gameRegistry.length * GameDifficulty.values.length * 3;
+      // só os jogos com níveis dão estrelas (o quarto da Mia não tem níveis)
+      final max = gameRegistry.fold<int>(
+        0,
+        (sum, game) => sum + game.difficulties.length * 3,
+      );
       expect(outfits.last.stars, lessThan(max));
       expect(outfits.first.stars, greaterThan(0));
     });

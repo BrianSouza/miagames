@@ -28,6 +28,38 @@ void main() {
       );
     });
 
+    test('SAVE_STATE traz o estado do jogo', () {
+      final message = GameMessage.parse(
+        '{"type":"SAVE_STATE","state":{"items":[{"id":"bed","x":0.5,"y":0.5}]}}',
+      );
+      expect(
+        message,
+        isA<SaveState>().having((m) => m.state['items'], 'items', [
+          {'id': 'bed', 'x': 0.5, 'y': 0.5},
+        ]),
+      );
+    });
+
+    test(
+      'SAVE_STATE: sem estado, com estado que não é um mapa, ou grande demais, vira null',
+      () {
+        final big = List.filled(SaveState.maxEncodedLength, 'x').join();
+        for (final raw in [
+          '{"type":"SAVE_STATE"}',
+          '{"type":"SAVE_STATE","state":null}',
+          '{"type":"SAVE_STATE","state":[1,2]}',
+          '{"type":"SAVE_STATE","state":"texto"}',
+          '{"type":"SAVE_STATE","state":{"lixo":"$big"}}',
+        ]) {
+          expect(
+            GameMessage.parse(raw),
+            isNull,
+            reason: raw.length > 80 ? 'estado grande' : raw,
+          );
+        }
+      },
+    );
+
     test('mensagens malformadas viram null em vez de erro', () {
       for (final raw in [
         'não é json',

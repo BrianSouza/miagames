@@ -101,4 +101,30 @@ void main() {
 
     expect(notified, 3);
   });
+
+  group('estado de um jogo livre (o quarto da Mia)', () {
+    test('começa sem nada, guarda por jogo e avisa quem escuta', () async {
+      final store = await memoryStore();
+      var notified = 0;
+      store.addListener(() => notified++);
+
+      expect(store.gameState('mia-room'), isNull);
+      await store.setGameState('mia-room', '{"items":[]}');
+
+      expect(store.gameState('mia-room'), '{"items":[]}');
+      expect(store.gameState('outro'), isNull);
+      expect(notified, 1);
+    });
+
+    test('apagar o progresso não apaga o quarto', () async {
+      final store = await memoryStore();
+      await store.setGameState('mia-room', '{"items":[]}');
+      await play(store, 3, 5);
+
+      await store.clearProgress();
+
+      expect(store.record('memory', GameDifficulty.level1), isNull);
+      expect(store.gameState('mia-room'), '{"items":[]}');
+    });
+  });
 }

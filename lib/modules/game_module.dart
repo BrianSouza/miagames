@@ -52,6 +52,10 @@ class GameModule {
   /// (texto escuro por cima, com bom contraste).
   final Color? tileColor;
 
+  /// Jogo livre, sem níveis nem estrelas (o quarto da Mia): o cartão abre o jogo direto, sem a
+  /// trilha de níveis, e o que a criança faz é guardado como estado (`SAVE_STATE`), não como recorde.
+  final bool freePlay;
+
   const GameModule({
     required this.id,
     required this.displayName,
@@ -65,6 +69,7 @@ class GameModule {
     this.scoreLabel = 'jogadas',
     this.scoreLabelSingular = 'jogada',
     this.tileColor,
+    this.freePlay = false,
   });
 
   Color get tile =>
