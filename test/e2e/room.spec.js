@@ -591,3 +591,317 @@ test.describe('girar e arrastar', () => {
     expect(await game.saves()).toHaveLength(0);
   });
 });
+
+test.describe('excluir móveis (para quem tem 5 anos)', () => {
+  const START = {
+    totalStars: 999,
+    state: { items: [{ id: 'lamp', x: 0.3, y: 0.4 }, { id: 'bed', x: 0.7, y: 0.6 }], mia: { x: 0.5, y: 0.8 } },
+  };
+  const lamp = (game) => game.page.locator('.item[data-id="lamp"]');
+  const bed = (game) => game.page.locator('.item[data-id="bed"]');
+  const zone = (game) => game.page.locator('#trash-zone');
+  const button = (game) => game.page.locator('#trash-btn');
+
+  test.describe('arrastar para a lixeira', () => {
+    test('arrastando um móvel do quarto, a bandeja vira uma lixeira grande; ao soltar, ela some', async ({ game }) => {
+      await game.open(START);
+      await expect(zone(game)).toBeHidden();
+
+      await game.dragTo(lamp(game), game.page.locator('#tray-area'), { drop: false });
+
+      await expect(zone(game)).toBeVisible();
+      const z = await zone(game).boundingBox();
+      const tray = await game.page.locator('#tray-area').boundingBox();
+      for (const k of ['x', 'y', 'width', 'height']) expect(Math.abs(z[k] - tray[k]), `a lixeira cobre a bandeja (${k})`).toBeLessThanOrEqual(6);
+      expect(z.width).toBeGreaterThanOrEqual(96);
+      expect(z.height).toBeGreaterThanOrEqual(96);
+      const icon = await zone(game).locator('svg').boundingBox();
+      expect(icon.width, 'o desenho da lixeira é grande').toBeGreaterThanOrEqual(80);
+      await expect(game.page.locator('body')).toHaveClass(/removing/);
+
+      await game.page.mouse.up();
+      await game.settled();
+      await expect(zone(game)).toBeHidden();
+      await expect(game.page.locator('body')).not.toHaveClass(/removing/);
+    });
+
+    test('a lixeira se destaca quando o móvel chega nela (a tampa abre)', async ({ game }) => {
+      await game.open(START);
+      const trayArea = game.page.locator('#tray-area');
+
+      await game.dragToRoom(lamp(game), 0.5, 0.5, { drop: false });
+      await expect(trayArea).not.toHaveClass(/drop-over/);
+      const calm = await zone(game).evaluate((e) => getComputedStyle(e).backgroundColor);
+      await game.dragTo(lamp(game), trayArea, { drop: false });
+
+      await expect(trayArea).toHaveClass(/drop-over/);
+      const over = await zone(game).evaluate((e) => getComputedStyle(e).backgroundColor);
+      expect(over, 'a cor muda quando o móvel está em cima').not.toBe(calm);
+      expect(await zone(game).locator('.lid').evaluate((e) => getComputedStyle(e).transform), 'a tampa gira').not.toBe('none');
+      await game.page.mouse.up();
+    });
+
+    test('o móvel arrastado é visto por cima da lixeira (o quarto não o recorta)', async ({ game }) => {
+      await game.open(START);
+      await game.dragTo(lamp(game), game.page.locator('#tray-area'), { drop: false });
+
+      const c = await lamp(game).boundingBox();
+      const topmost = await game.page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.item')?.dataset.id ?? null, [c.x + c.width / 2, c.y + c.height / 2]);
+      expect(topmost).toBe('lamp');
+      expect(await game.room().evaluate((e) => getComputedStyle(e).overflow)).toBe('visible');
+
+      await game.page.mouse.up();
+      await game.settled();
+      expect(await game.room().evaluate((e) => getComputedStyle(e).overflow), 'depois, o quarto volta a recortar').toBe('hidden');
+    });
+
+    test('soltar na lixeira exclui: some do quarto, a voz diz "Guardei!", o quarto é salvo e o móvel continua na bandeja', async ({ game }) => {
+      await game.open(START);
+
+      await game.dragToTray(lamp(game));
+
+      expect(await ids(game)).toEqual(['bed']);
+      expect((await game.spoken()).at(-1)).toBe('Guardei!');
+      await game.saveDelay();
+      expect((await game.saves()).at(-1).items.map((i) => i.id)).toEqual(['bed']);
+      await expect(await game.reveal('lamp')).toHaveClass(/draggable/);
+    });
+
+    test('foi sem querer? "Desfazer" traz o móvel de volta, no mesmo lugar', async ({ game }) => {
+      await game.open(START);
+      const before = await game.fractionOf(lamp(game));
+
+      await game.dragToTray(lamp(game));
+      await game.page.locator('#btn-reset').click();
+
+      expect(await ids(game)).toEqual(['bed', 'lamp']);
+      const after = await game.fractionOf(lamp(game));
+      expect(near(after.x, before.x) && near(after.y, before.y)).toBe(true);
+    });
+
+    test('soltar no quarto (fora da lixeira) só muda o móvel de lugar: nada é excluído', async ({ game }) => {
+      await game.open(START);
+      await game.dragToRoom(lamp(game), 0.8, 0.3);
+      expect(await ids(game)).toEqual(['bed', 'lamp']);
+      expect(await game.spoken()).not.toContain('Guardei!');
+    });
+
+    test('a lixeira só aparece ao arrastar um móvel do QUARTO: não com um móvel da bandeja, nem com a Mia', async ({ game }) => {
+      await game.open(START);
+
+      await game.dragToRoom(await game.reveal('chair'), 0.5, 0.5, { drop: false });
+      await expect(zone(game)).toBeHidden();
+      await game.page.mouse.up();
+      await game.settled();
+
+      await game.dragToRoom(game.mia(), 0.2, 0.7, { drop: false });
+      await expect(zone(game)).toBeHidden();
+      await game.page.mouse.up();
+      await game.settled();
+      await expect(game.mia()).toBeVisible();
+    });
+
+    test('a lixeira some se o arrasto é cancelado (girar a tela)', async ({ game }) => {
+      await game.open(START);
+      await game.dragTo(lamp(game), game.page.locator('#tray-area'), { drop: false });
+      await expect(zone(game)).toBeVisible();
+
+      await game.page.evaluate(() => window.dispatchEvent(new Event('resize')));
+
+      await expect(zone(game)).toBeHidden();
+      await game.page.mouse.up();
+      expect(await ids(game)).toEqual(['bed', 'lamp']);
+    });
+
+    test('funciona com o dedo (eventos de toque)', async ({ game }) => {
+      await game.open(START);
+      await game.touchDrag(lamp(game), game.page.locator('#tray-area'));
+      await game.settled();
+      expect(await ids(game)).toEqual(['bed']);
+    });
+  });
+
+  test.describe('tocar e apertar o botão de lixeira', () => {
+    test('tocar num móvel mostra um botão de lixeira grande, colado no canto dele, e o móvel ganha um anel', async ({ game }) => {
+      await game.open(START);
+      await expect(button(game)).toBeHidden();
+
+      await lamp(game).click();
+
+      await expect(button(game)).toBeVisible();
+      await expect(lamp(game)).toHaveClass(/selected/);
+      await game.settled();   // o "pop" do móvel e do botão muda o retângulo medido
+      const b = await button(game).boundingBox();
+      expect(b.width).toBeGreaterThanOrEqual(56);
+      expect(b.height).toBeGreaterThanOrEqual(56);
+      expect(await insideRoom(game, button(game))).toBe(true);
+      // fica no canto de cima, à direita, do móvel
+      const item = await lamp(game).boundingBox();
+      expect(Math.abs(b.x + b.width / 2 - (item.x + item.width))).toBeLessThanOrEqual(2);
+      expect(Math.abs(b.y + b.height / 2 - item.y)).toBeLessThanOrEqual(2);
+      await expect(button(game)).toHaveAttribute('aria-label', 'Tirar Abajur do quarto');
+      expect((await game.spoken()).at(-1)).toBe('Abajur');
+    });
+
+    test('apertar o botão exclui o móvel: ele some, o botão some, a voz diz "Guardei!" e o quarto é salvo', async ({ game }) => {
+      await game.open(START);
+      await lamp(game).click();
+
+      await button(game).click();
+
+      expect(await ids(game)).toEqual(['bed']);
+      await expect(button(game)).toBeHidden();
+      expect((await game.spoken()).at(-1)).toBe('Guardei!');
+      expect(await game.notes()).toBeGreaterThan(0);
+      await game.saveDelay();
+      expect((await game.saves()).at(-1).items.map((i) => i.id)).toEqual(['bed']);
+      await expect(await game.reveal('lamp')).toHaveClass(/draggable/);
+    });
+
+    test('"Desfazer" traz de volta o que o botão excluiu', async ({ game }) => {
+      await game.open(START);
+      await lamp(game).click();
+      await button(game).click();
+
+      await game.page.locator('#btn-reset').click();
+
+      expect(await ids(game)).toEqual(['bed', 'lamp']);
+      await expect(button(game)).toBeHidden();
+    });
+
+    test('tocar de novo no mesmo móvel tira o botão, sem excluir', async ({ game }) => {
+      await game.open(START);
+      await lamp(game).click();
+      await lamp(game).click();
+      await expect(button(game)).toBeHidden();
+      await expect(lamp(game)).not.toHaveClass(/selected/);
+      expect(await ids(game)).toEqual(['bed', 'lamp']);
+    });
+
+    test('tocar num lugar vazio do quarto tira o botão, sem excluir', async ({ game }) => {
+      await game.open(START);
+      await lamp(game).click();
+      const p = await game.roomPoint(0.05, 0.05);
+      await game.page.mouse.click(p.x, p.y);
+      await expect(button(game)).toBeHidden();
+      expect(await ids(game)).toEqual(['bed', 'lamp']);
+    });
+
+    test('tocar na Mia, na bandeja ou no cabeçalho também tira o botão, sem excluir', async ({ game }) => {
+      await game.open(START);
+      for (const target of [game.mia(), game.page.locator('#tray .source.draggable').first(), game.page.locator('#btn-listen')]) {
+        await lamp(game).click();
+        await expect(button(game)).toBeVisible();
+        await target.click();
+        await expect(button(game)).toBeHidden();
+        await expect(lamp(game)).not.toHaveClass(/selected/);
+      }
+      expect(await ids(game)).toEqual(['bed', 'lamp']);
+    });
+
+    test('tocar em outro móvel passa o botão para ele', async ({ game }) => {
+      await game.open(START);
+      await lamp(game).click();
+      await bed(game).click();
+
+      await expect(lamp(game)).not.toHaveClass(/selected/);
+      await expect(bed(game)).toHaveClass(/selected/);
+      await expect(button(game)).toHaveAttribute('aria-label', 'Tirar Caminha do quarto');
+      await button(game).click();
+      expect(await ids(game)).toEqual(['lamp']);
+    });
+
+    test('arrastar o móvel que está com o botão tira o botão (e não exclui)', async ({ game }) => {
+      await game.open(START);
+      await lamp(game).click();
+
+      await game.dragToRoom(lamp(game), 0.2, 0.7, { drop: false });
+      await expect(button(game)).toBeHidden();
+      await game.page.mouse.up();
+      await game.settled();
+
+      await expect(button(game)).toBeHidden();
+      expect(await ids(game)).toEqual(['bed', 'lamp']);
+    });
+
+    test('a Mia não tem o botão: tocar nela não mostra lixeira', async ({ game }) => {
+      await game.open(START);
+      await game.mia().click();
+      await expect(button(game)).toBeHidden();
+      await expect(game.mia()).toBeVisible();
+    });
+
+    test('desfazer tira o botão (o móvel pode nem existir mais)', async ({ game }) => {
+      await game.open({ ...START, state: { items: [] } });
+      await game.dragToRoom(await game.reveal('lamp'), 0.5, 0.5);
+      await lamp(game).click();
+      await expect(button(game)).toBeVisible();
+
+      await game.page.locator('#btn-reset').click();
+
+      await expect(button(game)).toBeHidden();
+      await expect(game.items()).toHaveCount(0);
+    });
+
+    test('o botão acompanha o móvel quando a tela gira', async ({ game, page }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await game.open(START);
+      await bed(game).click();
+      await game.settled();
+      const w = (await game.room().boundingBox()).width;
+
+      await page.setViewportSize({ width: 844, height: 390 });
+      await expect.poll(async () => (await game.room().boundingBox()).width).not.toBe(w);
+      await game.settled();
+
+      const b = await button(game).boundingBox();
+      const item = await bed(game).boundingBox();
+      expect(Math.abs(b.x + b.width / 2 - (item.x + item.width))).toBeLessThanOrEqual(2);
+      expect(Math.abs(b.y + b.height / 2 - item.y)).toBeLessThanOrEqual(2);
+      expect(await insideRoom(game, button(game))).toBe(true);
+    });
+
+    test('um móvel no canto: o botão fica dentro do quarto, nos 4 cantos', async ({ game }) => {
+      await game.open({
+        totalStars: 999,
+        state: {
+          items: [
+            { id: 'bed', x: 0, y: 0 },
+            { id: 'lamp', x: 1, y: 0 },
+            { id: 'chest', x: 0, y: 1 },
+            { id: 'yarn', x: 1, y: 1 },
+          ],
+        },
+      });
+      for (const id of ['bed', 'lamp', 'chest', 'yarn']) {
+        await game.page.locator(`.item[data-id="${id}"]`).click();
+        await expect(button(game), id).toBeVisible();
+        await game.settled();
+        expect(await insideRoom(game, button(game)), `botão de ${id} dentro do quarto`).toBe(true);
+        const b = await button(game).boundingBox();
+        expect(b.width).toBeGreaterThanOrEqual(56);
+      }
+    });
+
+    test('dá para esvaziar o quarto todo só apertando o botão em cada móvel', async ({ game }) => {
+      await game.open({ ...START, state: { ...START.state, items: [...START.state.items, { id: 'plant', x: 0.5, y: 0.3 }] } });
+      for (const id of ['lamp', 'bed', 'plant']) {
+        await game.page.locator(`.item[data-id="${id}"]`).click();
+        await button(game).click();
+      }
+      await expect(game.items()).toHaveCount(0);
+      await expect(game.mia()).toBeVisible();
+      await game.saveDelay();
+      expect((await game.saves()).at(-1).items).toEqual([]);
+    });
+
+    test('a lixeira e o botão não mandam GAME_COMPLETE nem mudam estrelas', async ({ game }) => {
+      await game.open(START);
+      await lamp(game).click();
+      await button(game).click();
+      await game.dragToTray(bed(game));
+      await game.saveDelay();
+      expect((await game.messages()).filter((m) => m.type === 'GAME_COMPLETE')).toHaveLength(0);
+    });
+  });
+});

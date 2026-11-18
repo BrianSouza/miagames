@@ -26,6 +26,7 @@
   var saveTimer = null;
   var dirty = false;
   var cheerTimer = null;
+  var selectedUid = null;   // o móvel em que a criança tocou (ganha o botão de lixeira)
 
   // ── DOM ───────────────────────────────────────────────────────────────────────
   var roomEl = document.getElementById('room');
@@ -34,6 +35,7 @@
   var prevEl = document.getElementById('page-prev');
   var nextEl = document.getElementById('page-next');
   var statusEl = document.getElementById('status');
+  var trashBtn = document.getElementById('trash-btn');
   var miaEl = null;   // o ator da Mia (criado depois do INIT, quando ela já sabe o que veste)
 
   // ── Ponte com o Flutter ───────────────────────────────────────────────────────
@@ -66,7 +68,8 @@
     getTargets: function () {
       return [{ id: 'room', el: roomEl }, { id: 'tray', el: trayAreaEl }];
     },
-    onStart: function () { Sounds.play('flip'); },
+    onStart: onDragStart,
+    onCancel: endRemoving,
     onTap: onTap,
     onDrop: onDrop,
   });
@@ -112,6 +115,7 @@
   /** Refaz tudo que está no quarto (a Mia e os móveis) a partir do estado */
   function renderActors() {
     drag.cancel();
+    deselect();
     Array.prototype.forEach.call(roomEl.querySelectorAll('.actor'), function (el) { el.remove(); });
 
     miaEl = document.createElement('div');
@@ -185,6 +189,7 @@
 
   function layout() {
     positionAll();
+    positionTrashButton();
     layoutTray();
   }
 
@@ -296,6 +301,7 @@
 
   /** O kit pergunta: o que fazer com o que a criança soltou? ('accept' o ator fica; 'reject' volta para onde estava) */
   function onDrop(el, target) {
+    endRemoving();
     if (!state) return 'reject';
     if (el.classList.contains('source')) return dropSource(el, target);
     if (el === miaEl) return dropMia();
@@ -328,16 +334,7 @@
   /** Um móvel do quarto: se caiu na bandeja, é guardado; senão muda de lugar (sem sair do quarto) */
   function dropItem(el, target) {
     var uid = el.getAttribute('data-uid');
-    if (target && target.id === 'tray') {
-      var removed = Logic.remove(state, uid);
-      if (removed.result !== 'removed') return 'reject';
-      state = removed.state;
-      el.remove();
-      Sounds.play('flip');
-      speak('Guardei!');
-      changed();
-      return 'accept';
-    }
+    if (target && target.id === 'tray') return removeItem(el) ? 'accept' : 'reject';
     var id = el.getAttribute('data-id');
     var at = fractionAt(centerOf(el), sidePx(Logic.sizeOf(id)));
     var moved = Logic.move(state, uid, at.x, at.y);
@@ -372,16 +369,21 @@
   /** Um toque curto (sem arrastar): a voz diz o que é */
   function onTap(el) {
     if (el === miaEl) {
+      deselect();
       speak('Oi! Este é o meu quarto!');
       cheer();
       return;
     }
     if (el.classList.contains('source')) {
+      deselect();
       speak(nameOf(el.getAttribute('data-furniture')));
       return;
     }
+    // um móvel do quarto: a voz diz o nome e ele ganha o botão de lixeira (tocar de novo tira o botão)
     speak(nameOf(el.getAttribute('data-id')));
     pop(el);
+    if (selectedUid === el.getAttribute('data-uid')) deselect();
+    else select(el);
   }
 
   // Tocar num móvel fechado (que não é arrastável) diz quantas estrelas faltam
@@ -390,6 +392,76 @@
     if (!locked) return;
     var item = furnitureById(locked.getAttribute('data-furniture'));
     if (item) speak(lockedMessage(item));
+  });
+
+  // ── Excluir ───────────────────────────────────────────────────────────────────
+  // Dois jeitos, os dois pensados para quem tem 5 anos: arrastar o móvel para a lixeira grande (a bandeja vira uma
+  // lixeira enquanto se arrasta) ou tocar nele e apertar o botão de lixeira que aparece colado nele.
+  // Nada se perde de vez: o móvel continua na bandeja e "Desfazer" traz de volta o que foi tirado.
+
+  /** Começou a arrastar: se é um móvel do quarto (não a Mia, não um da bandeja), a bandeja vira lixeira */
+  function onDragStart(el) {
+    Sounds.play('flip');
+    deselect();
+    if (el.classList.contains('item')) document.body.classList.add('removing');
+  }
+
+  function endRemoving() {
+    document.body.classList.remove('removing');
+  }
+
+  /** Tira o móvel `el` do quarto (a lixeira e o botão chamam isto). Devolve false se não deu */
+  function removeItem(el) {
+    var removed = Logic.remove(state, el.getAttribute('data-uid'));
+    if (removed.result !== 'removed') return false;
+    state = removed.state;
+    if (selectedUid === el.getAttribute('data-uid')) deselect();
+    el.remove();
+    Sounds.play('flip');
+    speak('Guardei!');
+    changed();
+    return true;
+  }
+
+  function select(el) {
+    deselect();
+    selectedUid = el.getAttribute('data-uid');
+    el.classList.add('selected');
+    trashBtn.setAttribute('aria-label', 'Tirar ' + nameOf(el.getAttribute('data-id')) + ' do quarto');
+    trashBtn.classList.remove('hidden');
+    positionTrashButton();
+  }
+
+  function deselect() {
+    selectedUid = null;
+    Array.prototype.forEach.call(roomEl.querySelectorAll('.item.selected'), function (el) {
+      el.classList.remove('selected');
+    });
+    trashBtn.classList.add('hidden');
+  }
+
+  /** O botão fica no canto de cima, à direita, do móvel (empurrado para dentro do quarto) */
+  function positionTrashButton() {
+    if (selectedUid === null) return;
+    var el = roomEl.querySelector('.item[data-uid="' + selectedUid + '"]');
+    if (!el) { deselect(); return; }
+    var room = roomEl.getBoundingClientRect();
+    var item = el.getBoundingClientRect();
+    var half = trashBtn.offsetWidth / 2 || 30;
+    var cx = Math.min(Math.max(item.right - room.left, half), Math.max(half, room.width - half));
+    var cy = Math.min(Math.max(item.top - room.top, half), Math.max(half, room.height - half));
+    trashBtn.style.left = Math.round(cx - half) + 'px';
+    trashBtn.style.top = Math.round(cy - half) + 'px';
+  }
+
+  trashBtn.addEventListener('click', function () {
+    var el = selectedUid === null ? null : roomEl.querySelector('.item[data-uid="' + selectedUid + '"]');
+    if (el) removeItem(el);
+  });
+
+  // tocar em qualquer outro lugar (o quarto vazio, a bandeja, o cabeçalho) tira a seleção, sem excluir nada
+  document.addEventListener('click', function (e) {
+    if (!(e.target.closest && e.target.closest('.item, #trash-btn'))) deselect();
   });
 
   // ── Desfazer ──────────────────────────────────────────────────────────────────
