@@ -36,7 +36,7 @@ jobs:
 
   e2e:
     name: Navegador (Playwright)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # o Playwright ainda não suporta o Ubuntu 26.04 (ubuntu-latest)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

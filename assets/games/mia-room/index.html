@@ -19,10 +19,25 @@
       <!-- O quarto: parede, chão e janela são do CSS; os móveis e a Mia entram aqui por cima -->
       <div id="room" class="room" role="group" aria-label="Quarto da Mia">
         <div class="window" aria-hidden="true"></div>
+        <!-- Tocou num móvel: este botão grande de lixeira aparece colado nele -->
+        <button id="trash-btn" class="trash-btn hidden" aria-label="Tirar do quarto">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M10.5 11v6M13.5 11v6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </button>
       </div>
 
       <!-- Os móveis para arrastar, de poucos em poucos (as setas viram a página) -->
       <div id="tray-area" class="tray-area">
+        <!-- Enquanto se arrasta um móvel do quarto, a bandeja vira uma lixeira grande (só desenho: a bandeja é o alvo) -->
+        <div id="trash-zone" class="trash-zone" aria-hidden="true">
+          <svg viewBox="0 0 64 64">
+            <g class="lid"><rect x="12" y="14" width="40" height="6" rx="3" fill="currentColor"/><rect x="25" y="8" width="14" height="7" rx="3" fill="currentColor"/></g>
+            <path d="M16 24h32l-3 32a4 4 0 0 1-4 4H23a4 4 0 0 1-4-4z" fill="currentColor"/>
+            <path d="M26 31v21M32 31v21M38 31v21" stroke="#FFE3E3" stroke-width="3.2" stroke-linecap="round"/>
+          </svg>
+        </div>
         <button id="page-prev" class="icon-btn page-btn" aria-label="Móveis anteriores">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>

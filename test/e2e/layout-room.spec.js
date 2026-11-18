@@ -133,6 +133,51 @@ for (const [name, viewport] of Object.entries(VIEWPORTS)) {
       }
     });
 
+    test('excluir: a lixeira ao arrastar cobre a bandeja e o botão de tocar fica dentro do quarto, nos 4 cantos', async ({ game }) => {
+      await game.open({
+        totalStars: 999,
+        state: {
+          items: [
+            { id: 'bed', x: 0, y: 0 },
+            { id: 'lamp', x: 1, y: 0 },
+            { id: 'chest', x: 0, y: 1 },
+            { id: 'yarn', x: 1, y: 1 },
+          ],
+        },
+      });
+      const room = await game.room().boundingBox();
+
+      // o botão de lixeira: grande, dentro do quarto e fora do cabeçalho, para cada móvel
+      for (const id of ['bed', 'lamp', 'chest', 'yarn']) {
+        await game.page.locator(`.item[data-id="${id}"]`).click();
+        await game.settled();
+        const b = await game.page.locator('#trash-btn').boundingBox();
+        expect(b.width, `botão de ${id}`).toBeGreaterThanOrEqual(56);
+        expect(b.height).toBeGreaterThanOrEqual(56);
+        expect(b.x).toBeGreaterThanOrEqual(room.x - 1);
+        expect(b.y).toBeGreaterThanOrEqual(room.y - 1);
+        expect(b.x + b.width).toBeLessThanOrEqual(room.x + room.width + 1);
+        expect(b.y + b.height).toBeLessThanOrEqual(room.y + room.height + 1);
+      }
+
+      // a lixeira ao arrastar: grande, dentro da tela e cobrindo a bandeja
+      await game.dragTo(game.page.locator('.item[data-id="chest"]'), game.page.locator('#tray-area'), { drop: false });
+      const zone = await game.page.locator('#trash-zone').boundingBox();
+      const tray = await game.page.locator('#tray-area').boundingBox();
+      expect(zone.width).toBeGreaterThanOrEqual(96);
+      expect(zone.height).toBeGreaterThanOrEqual(96);
+      expect(zone.x).toBeGreaterThanOrEqual(-0.5);
+      expect(zone.x + zone.width).toBeLessThanOrEqual(viewport.width + 0.5);
+      expect(zone.y + zone.height).toBeLessThanOrEqual(viewport.height + 0.5);
+      for (const k of ['x', 'y', 'width', 'height']) expect(Math.abs(zone[k] - tray[k])).toBeLessThanOrEqual(6);
+      const icon = await game.page.locator('#trash-zone svg').boundingBox();
+      expect(icon.width, 'o desenho da lixeira é grande').toBeGreaterThanOrEqual(64);
+      expect(icon.x).toBeGreaterThanOrEqual(zone.x - 1);
+      expect(icon.x + icon.width).toBeLessThanOrEqual(zone.x + zone.width + 1);
+      expect(icon.y + icon.height).toBeLessThanOrEqual(zone.y + zone.height + 1);
+      await game.page.mouse.up();
+    });
+
     test('dá para pôr um móvel de cada tamanho e ele fica dentro do quarto', async ({ game }) => {
       await game.open({ totalStars: 999, state: { items: [] } });
       for (const id of ['bed', 'tent', 'yarn']) {
